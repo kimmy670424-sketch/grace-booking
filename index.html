@@ -507,7 +507,7 @@
 
 <script>
     // ============================================================
-    // ✅ 您的 API 網址 (請換成您自己的)
+    // ✅ 您的 API 網址
     // ============================================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbz8tJzpEZ_V96UyI4vfkOSWxp2oXfRdtWsZK-Vn6T_6qIbMC04Ly99wbkVlO9FkgeaO/exec';
 
@@ -529,30 +529,44 @@
     const YEAR_END = 2036;
 
     // ============================================================
-    // 雲端儲存
+    // 雲端儲存 - 強制從雲端讀取最新資料
     // ============================================================
     async function loadFromCloud() {
         try {
             const url = `${API_URL}?action=get&t=${Date.now()}`;
             const response = await fetch(url);
-            const data = await response.json();
+            const text = await response.text();
+            
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('JSON 解析失敗:', text);
+                return false;
+            }
+            
+            // 完全重置資料
             bookings = {};
             holidays = {};
+            
             if (Array.isArray(data)) {
                 data.forEach(item => {
                     if (item.holiday === true) {
                         holidays[item.date] = true;
-                    } else {
+                    } else if (item.date) {
                         if (!bookings[item.date]) bookings[item.date] = [];
                         bookings[item.date].push({
                             time: item.time || '',
                             name: item.name || '',
-                            services: Array.isArray(item.services) ? item.services : [],
+                            services: Array.isArray(item.services) ? item.services : 
+                                      (item.services ? item.services.split(',') : []),
                             otherNote: item.otherNote || ''
                         });
                     }
                 });
             }
+            
+            // 儲存到本地
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             return true;
@@ -566,50 +580,52 @@
         }
     }
 
-    async function saveToCloud(date, time, name, services, otherNote, isHoliday = false) {
+    // ============================================================
+    // 雲端儲存 - 新增/刪除 (修正為正確的參數傳遞)
+    // ============================================================
+    async function callCloudAPI(action, params = {}) {
         try {
-            const params = new URLSearchParams();
-            params.append('action', 'add');
-            params.append('date', date);
-            params.append('time', time || '');
-            params.append('name', name || '');
-            params.append('services', services.join(','));
-            params.append('otherNote', otherNote || '');
-            params.append('holiday', isHoliday ? 'true' : 'false');
+            const formData = new URLSearchParams();
+            formData.append('action', action);
+            Object.keys(params).forEach(key => {
+                formData.append(key, params[key] !== undefined ? params[key] : '');
+            });
             
-            await fetch(API_URL, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString()
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData.toString()
             });
+            
+            // no-cors 模式下無法讀取 response，所以假設成功
             return true;
         } catch (error) {
-            console.error('雲端儲存失敗', error);
+            console.error('雲端 API 呼叫失敗:', error);
             return false;
         }
     }
 
+    async function saveToCloud(date, time, name, services, otherNote, isHoliday = false) {
+        return await callCloudAPI('add', {
+            date: date,
+            time: time || '',
+            name: name || '',
+            services: services.join(','),
+            otherNote: otherNote || '',
+            holiday: isHoliday ? 'true' : 'false'
+        });
+    }
+
     async function deleteFromCloud(date, time, name, isHoliday = false) {
-        try {
-            const params = new URLSearchParams();
-            params.append('action', 'delete');
-            params.append('date', date);
-            params.append('time', time || '');
-            params.append('name', name || '');
-            params.append('holiday', isHoliday ? 'true' : 'false');
-            
-            await fetch(API_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString()
-            });
-            return true;
-        } catch (error) {
-            console.error('雲端刪除失敗', error);
-            return false;
-        }
+        return await callCloudAPI('delete', {
+            date: date,
+            time: time || '',
+            name: name || '',
+            holiday: isHoliday ? 'true' : 'false'
+        });
     }
 
     // ============================================================
@@ -703,7 +719,7 @@
     }
 
     // ============================================================
-    // 雙擊切換休假 (支援手機 touch + 電腦 click)
+    // 雙擊切換休假
     // ============================================================
     let lastTapTime = 0;
     let tapTimeout = null;
@@ -738,6 +754,7 @@
             return;
         }
 
+        // 先更新本地
         if (isHolidayNow) {
             delete holidays[dateStr];
         } else {
@@ -747,14 +764,10 @@
         renderCalendar();
         renderDailyList();
 
-        try {
-            if (isHolidayNow) {
-                await deleteFromCloud(dateStr, '', '', true);
-            } else {
-                await saveToCloud(dateStr, '', '休假', [], '', true);
-            }
-        } catch (error) {
-            console.error('雲端同步失敗', error);
+        // 同步到雲端
+        const success = await saveToCloud(dateStr, '', '休假', [], '', !isHolidayNow);
+        if (!success) {
+            // 復原
             if (isHolidayNow) {
                 holidays[dateStr] = true;
             } else {
@@ -763,7 +776,7 @@
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             renderCalendar();
             renderDailyList();
-            alert('雲端同步失敗，已復原');
+            alert('❌ 雲端同步失敗，已復原');
         }
     }
 
@@ -916,11 +929,13 @@
                 e.stopPropagation();
                 if (this.disabled) return;
                 this.disabled = true;
+                
                 const date = this.dataset.date;
                 const time = this.dataset.time;
                 const name = this.dataset.name;
+                
                 if (confirm(`確定刪除 ${name} 的預約嗎？`)) {
-                    await deleteFromCloud(date, time, name, false);
+                    // 先更新本地
                     const list = bookings[date] || [];
                     const idx = list.findIndex(item => item.time === time && item.name === name);
                     if (idx > -1) {
@@ -930,6 +945,9 @@
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
                     renderCalendar();
                     renderDailyList();
+                    
+                    // 同步到雲端
+                    await deleteFromCloud(date, time, name, false);
                 }
                 this.disabled = false;
             });
@@ -1106,14 +1124,17 @@
                 }
             }
 
-            await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
+            // 先更新本地
             if (!bookings[dateStr]) bookings[dateStr] = [];
             bookings[dateStr].push({ time, name, services: [...selectedServices], otherNote });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
-
-            resetForm();
             renderCalendar();
             renderDailyList();
+
+            // 同步到雲端
+            await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
+
+            resetForm();
             alert(`✓ 已將 ${name} 的預約加入 ${dateStr} ${time}`);
         } catch (error) {
             console.error('儲存失敗', error);
@@ -1140,9 +1161,30 @@
     }
 
     // ============================================================
-    // 初始化 + 自動同步
+    // 強制同步函數 (手動觸發)
+    // ============================================================
+    async function forceSync() {
+        const btn = document.getElementById('saveBtn');
+        const originalText = btn.textContent;
+        btn.textContent = '🔄 同步中...';
+        btn.disabled = true;
+        
+        await loadFromCloud();
+        renderCalendar();
+        renderDailyList();
+        
+        btn.textContent = '✅ 已同步';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }, 1500);
+    }
+
+    // ============================================================
+    // 初始化
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
+        // 先載入雲端資料
         await loadFromCloud();
 
         let today = new Date();
@@ -1201,18 +1243,16 @@
         renderCalendar();
         renderDailyList();
 
-        // 每 30 秒自動同步
+        // 每 15 秒自動同步 (更頻繁)
         setInterval(async function() {
-            console.log('🔄 自動同步中...');
             await loadFromCloud();
             renderCalendar();
             renderDailyList();
-        }, 30000);
+        }, 15000);
 
         // 頁面重新可見時同步
         document.addEventListener('visibilitychange', async function() {
             if (!document.hidden) {
-                console.log('🔄 頁面重新可見，同步中...');
                 await loadFromCloud();
                 renderCalendar();
                 renderDailyList();
