@@ -452,7 +452,83 @@
             .day-cell { min-height: 100px; }
             .mini-booking { font-size: 0.85rem; }
         }
-    </style>
+    
+    /* ============================================================
+       手機版防止內容過長撐出框外
+       ============================================================ */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* 一般容器與表單不能超過螢幕 */
+    .container,
+    .calendar,
+    .daily-list,
+    .form-overlay,
+    .form-row,
+    .date-select-row {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    /* 預約文字、姓名、服務、備註過長時自動換行 */
+    .booking-item,
+    .booking-item *,
+    .day-cell,
+    .day-cell *,
+    .daily-list,
+    .daily-list *,
+    .form-overlay,
+    .form-overlay * {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    /* input / select 不可以把手機畫面撐寬 */
+    input,
+    select,
+    textarea,
+    button {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    @media (max-width: 600px) {
+        body {
+            overflow-x: hidden;
+        }
+
+        .booking-item {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .booking-item > * {
+            max-width: 100%;
+        }
+
+        .date-select-row {
+            width: 100%;
+            display: flex;
+            gap: 6px;
+        }
+
+        .date-select-row select {
+            flex: 1 1 0;
+            width: 0;
+            min-width: 0;
+        }
+    }
+
+</style>
 </head>
 <body>
 
