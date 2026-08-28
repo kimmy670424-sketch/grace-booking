@@ -507,9 +507,9 @@
 
 <script>
     // ============================================================
-    // API 網址 (您的 Google Apps Script)
+    // ✅ 您的 API 網址 (請換成您自己的)
     // ============================================================
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxyESEXKVH8ELbnggNSPd5d-6f1EUcsQBKtvmUy4O0k3lgvg3RwgPJVh0lIOGYolmaX/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz8tJzpEZ_V96UyI4vfkOSWxp2oXfRdtWsZK-Vn6T_6qIbMC04Ly99wbkVlO9FkgeaO/exec';
 
     // ============================================================
     // 資料層
@@ -533,7 +533,8 @@
     // ============================================================
     async function loadFromCloud() {
         try {
-            const response = await fetch(`${API_URL}?action=get&t=${Date.now()}`);
+            const url = `${API_URL}?action=get&t=${Date.now()}`;
+            const response = await fetch(url);
             const data = await response.json();
             bookings = {};
             holidays = {};
@@ -567,19 +568,20 @@
 
     async function saveToCloud(date, time, name, services, otherNote, isHoliday = false) {
         try {
+            const params = new URLSearchParams();
+            params.append('action', 'add');
+            params.append('date', date);
+            params.append('time', time || '');
+            params.append('name', name || '');
+            params.append('services', services.join(','));
+            params.append('otherNote', otherNote || '');
+            params.append('holiday', isHoliday ? 'true' : 'false');
+            
             await fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'add',
-                    date: date,
-                    time: time || '',
-                    name: name || '',
-                    services: services || [],
-                    otherNote: otherNote || '',
-                    holiday: isHoliday
-                })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
             });
             return true;
         } catch (error) {
@@ -590,17 +592,18 @@
 
     async function deleteFromCloud(date, time, name, isHoliday = false) {
         try {
+            const params = new URLSearchParams();
+            params.append('action', 'delete');
+            params.append('date', date);
+            params.append('time', time || '');
+            params.append('name', name || '');
+            params.append('holiday', isHoliday ? 'true' : 'false');
+            
             await fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'delete',
-                    date: date,
-                    time: time || '',
-                    name: name || '',
-                    holiday: isHoliday
-                })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
             });
             return true;
         } catch (error) {
@@ -711,11 +714,9 @@
         lastTapTime = now;
 
         if (timeSince < 400 && timeSince > 0) {
-            // 雙擊/雙點
             clearTimeout(tapTimeout);
             toggleHolidayByDoubleClick(dateObj);
         } else {
-            // 單擊
             tapTimeout = setTimeout(() => {
                 const y = parseInt(el.dataset.year);
                 const m = parseInt(el.dataset.month);
@@ -737,7 +738,6 @@
             return;
         }
 
-        // 立即更新 UI
         if (isHolidayNow) {
             delete holidays[dateStr];
         } else {
@@ -747,7 +747,6 @@
         renderCalendar();
         renderDailyList();
 
-        // 背景同步雲端
         try {
             if (isHolidayNow) {
                 await deleteFromCloud(dateStr, '', '', true);
@@ -837,25 +836,21 @@
 
         grid.innerHTML = html;
 
-        // 綁定事件 (同時支援 click 和 touch)
         grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
             const y = parseInt(el.dataset.year);
             const m = parseInt(el.dataset.month);
             const d = parseInt(el.dataset.day);
             const dateObj = new Date(y, m, d);
 
-            // 移除舊事件避免重複綁定
             el.removeEventListener('click', el._clickHandler);
             el.removeEventListener('touchend', el._touchHandler);
 
-            // 電腦用 click
             el._clickHandler = function(e) {
                 e.preventDefault();
                 handleDayTap(this, dateObj);
             };
             el.addEventListener('click', el._clickHandler);
 
-            // 手機用 touchend (更靈敏)
             el._touchHandler = function(e) {
                 e.preventDefault();
                 handleDayTap(this, dateObj);
@@ -1148,7 +1143,6 @@
     // 初始化 + 自動同步
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
-        // 載入資料
         await loadFromCloud();
 
         let today = new Date();
@@ -1162,7 +1156,6 @@
         updateServiceButtons();
         renderDateSelectors(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // 監聽日期變化
         document.getElementById('selectYear').addEventListener('change', function() {
             const year = parseInt(this.value);
             const month = parseInt(document.getElementById('selectMonth').value);
@@ -1178,7 +1171,6 @@
             updateDays(year, month, day > maxDay ? maxDay : day);
         });
 
-        // 按鈕事件
         document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
         document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
         document.getElementById('monthLabel').addEventListener('click', openPicker);
@@ -1209,7 +1201,7 @@
         renderCalendar();
         renderDailyList();
 
-        // === 自動每 30 秒同步一次 ===
+        // 每 30 秒自動同步
         setInterval(async function() {
             console.log('🔄 自動同步中...');
             await loadFromCloud();
@@ -1217,7 +1209,7 @@
             renderDailyList();
         }, 30000);
 
-        // === 當頁面重新獲得焦點時也同步 ===
+        // 頁面重新可見時同步
         document.addEventListener('visibilitychange', async function() {
             if (!document.hidden) {
                 console.log('🔄 頁面重新可見，同步中...');
