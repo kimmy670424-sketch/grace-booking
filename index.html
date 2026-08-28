@@ -44,18 +44,8 @@
             gap: 10px;
             padding-right: 80px;
         }
-        .shop-name {
-            font-size: 1.8rem;
-            font-weight: 400;
-            letter-spacing: 2px;
-            color: #3e3a36;
-        }
-        .shop-name small {
-            font-size: 1.1rem;
-            font-weight: 300;
-            color: #a6978a;
-            margin-left: 4px;
-        }
+        .shop-name { font-size: 1.8rem; font-weight: 400; letter-spacing: 2px; color: #3e3a36; }
+        .shop-name small { font-size: 1.1rem; font-weight: 300; color: #a6978a; margin-left: 4px; }
         .month-nav { display: flex; align-items: center; gap: 10px; }
         .month-nav .nav-btn {
             background: none;
@@ -144,6 +134,8 @@
             flex-direction: column;
             position: relative;
             transition: background 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         .day-cell:active { background: #ede8e2; transform: scale(0.96); }
         .day-cell.empty { background: transparent; cursor: default; min-height: 30px; }
@@ -151,7 +143,6 @@
         .day-cell.today { border-color: #b7a698; background: #f8f4ef; }
         .day-cell.selected { background: #3d362f; color: #f5f0ea; }
         .day-cell.selected .day-number { color: #f5f0ea; }
-        /* 休假紅字 */
         .day-cell.holiday .day-number { color: #d32f2f !important; font-weight: 700; }
         .day-cell.holiday .holiday-badge {
             background: #d32f2f;
@@ -167,7 +158,6 @@
         }
         .day-cell.selected.holiday .day-number { color: #ff8a80 !important; }
         .day-cell.selected.holiday .holiday-badge { background: #b71c1c; }
-
         .day-number {
             font-size: 1.0rem;
             font-weight: 700;
@@ -177,7 +167,6 @@
             flex-shrink: 0;
         }
         .day-cell.selected .day-number { color: #f5f0ea; }
-
         .day-bookings {
             display: flex;
             flex-direction: column;
@@ -203,20 +192,9 @@
             background: rgba(255, 255, 255, 0.12);
             color: #f5f0ea;
         }
-        .mini-booking .mini-time {
-            font-weight: 700;
-            color: #5f554a;
-            flex-shrink: 0;
-            font-size: 0.65rem;
-        }
+        .mini-booking .mini-time { font-weight: 700; color: #5f554a; flex-shrink: 0; font-size: 0.65rem; }
         .day-cell.selected .mini-booking .mini-time { color: #e8e0d8; }
-        .mini-booking .mini-name {
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex: 1;
-            font-size: 0.65rem;
-        }
+        .mini-booking .mini-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; flex: 1; font-size: 0.65rem; }
         .mini-booking .mini-service {
             font-size: 0.6rem;
             color: #7f7164;
@@ -226,26 +204,10 @@
             border-radius: 8px;
             font-weight: 500;
         }
-        .day-cell.selected .mini-booking .mini-service {
-            background: rgba(255,255,255,0.12);
-            color: #d6ccc2;
-        }
-        .more-indicator {
-            font-size: 0.65rem;
-            color: #a6978a;
-            text-align: center;
-            padding: 1px 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
+        .day-cell.selected .mini-booking .mini-service { background: rgba(255,255,255,0.12); color: #d6ccc2; }
+        .more-indicator { font-size: 0.65rem; color: #a6978a; text-align: center; padding: 1px 0; font-weight: 600; letter-spacing: 0.5px; }
         .day-cell.selected .more-indicator { color: #d6ccc2; }
-
-        .divider {
-            border: none;
-            border-top: 2px solid #f0ebe5;
-            margin: 12px 0 8px 0;
-        }
-
+        .divider { border: none; border-top: 2px solid #f0ebe5; margin: 12px 0 8px 0; }
         .daily-section { margin-top: 4px; padding-top: 4px; }
         .daily-title {
             font-size: 1.1rem;
@@ -264,12 +226,7 @@
             font-size: 0.85rem;
             color: #5b534a;
         }
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            min-height: 40px;
-        }
+        .timeline { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
         .booking-card {
             background: #fcfaf7;
             border-radius: 16px;
@@ -282,26 +239,10 @@
         }
         .booking-card:active { background: #f6f0ea; transform: scale(0.98); }
         .card-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .time-block {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #3d362f;
-            min-width: 60px;
-        }
-        .info-block .guest-name {
-            font-size: 1.0rem;
-            font-weight: 600;
-            color: #2c2621;
-        }
+        .time-block { font-size: 1.1rem; font-weight: 600; color: #3d362f; min-width: 60px; }
+        .info-block .guest-name { font-size: 1.0rem; font-weight: 600; color: #2c2621; }
         .service-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
-        .tag {
-            background: #ede7e0;
-            padding: 2px 12px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            color: #4f453b;
-            font-weight: 500;
-        }
+        .tag { background: #ede7e0; padding: 2px 12px; border-radius: 30px; font-size: 0.75rem; color: #4f453b; font-weight: 500; }
         .tag-other { background: #e8e0d8; font-style: italic; }
         .delete-btn {
             background: none;
@@ -320,7 +261,6 @@
         }
         .delete-btn:active { background: #efe8e0; }
         .delete-btn:disabled { opacity: 0.3; pointer-events: none; }
-
         .empty-state {
             text-align: center;
             padding: 20px 16px;
@@ -331,7 +271,6 @@
             border: 2px dashed #e1d7ce;
         }
 
-        /* 表單 */
         .form-overlay {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: rgba(255,252,248,0.97);
@@ -352,33 +291,13 @@
         }
         .form-overlay.active { transform: translateY(0); }
         .form-handle { width: 40px; height: 4px; background: #d6ccc2; border-radius: 8px; margin: 0 auto 14px auto; }
-        .form-title {
-            font-size: 1.3rem;
-            font-weight: 400;
-            color: #3d362f;
-            text-align: center;
-            margin-bottom: 14px;
-            letter-spacing: 2px;
-        }
-        .date-select-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
+        .form-title { font-size: 1.3rem; font-weight: 400; color: #3d362f; text-align: center; margin-bottom: 14px; letter-spacing: 2px; }
+        .date-select-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .date-select-row select {
-            flex: 1;
-            min-width: 70px;
-            padding: 10px 8px;
-            border: 2px solid #ddd3ca;
-            border-radius: 40px;
-            background: #fefcf9;
-            font-size: 0.95rem;
-            color: #2c2621;
-            outline: none;
-            touch-action: manipulation;
-            min-height: 44px;
-            text-align: center;
+            flex: 1; min-width: 70px; padding: 10px 8px;
+            border: 2px solid #ddd3ca; border-radius: 40px;
+            background: #fefcf9; font-size: 0.95rem; color: #2c2621; outline: none;
+            touch-action: manipulation; min-height: 44px; text-align: center;
         }
         .date-select-row select:focus { border-color: #b7a698; }
         .form-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -386,17 +305,10 @@
             flex: 1; min-width: 100px; padding: 12px 16px;
             border: 2px solid #ddd3ca; border-radius: 40px;
             background: #fefcf9; font-size: 1.0rem; color: #2c2621; outline: none;
-            touch-action: manipulation;
-            min-height: 48px;
+            touch-action: manipulation; min-height: 48px;
         }
         .form-row select:focus, .form-row input:focus { border-color: #b7a698; }
-        .service-label {
-            font-size: 0.95rem;
-            color: #6b5f53;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-            display: block;
-        }
+        .service-label { font-size: 0.95rem; color: #6b5f53; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
         .service-picker { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px 0; }
         .service-btn {
             padding: 8px 18px;
@@ -416,8 +328,7 @@
         .other-note-row.show { display: flex; }
         .other-note-row input {
             flex: 1; padding: 12px 16px; border: 2px solid #ddd3ca;
-            border-radius: 40px; background: #fefcf9; font-size: 1.0rem; outline: none;
-            min-height: 44px;
+            border-radius: 40px; background: #fefcf9; font-size: 1.0rem; outline: none; min-height: 44px;
         }
         .form-actions { display: flex; gap: 10px; margin-top: 6px; }
         .submit-btn {
@@ -450,13 +361,7 @@
             max-width: 400px; width: 100%; max-height: 80vh; overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
-        .picker-modal .picker-title {
-            font-size: 1.2rem;
-            color: #3d362f;
-            text-align: center;
-            margin-bottom: 14px;
-            letter-spacing: 2px;
-        }
+        .picker-modal .picker-title { font-size: 1.2rem; color: #3d362f; text-align: center; margin-bottom: 14px; letter-spacing: 2px; }
         .picker-grid { display: grid; gap: 10px; }
         .picker-grid.year-grid { grid-template-columns: repeat(4, 1fr); }
         .picker-grid.month-grid { grid-template-columns: repeat(3, 1fr); }
@@ -485,8 +390,7 @@
         .picker-tab {
             flex: 1; padding: 10px; border: none; border-radius: 24px;
             background: #f3efe9; color: #5b534a; font-size: 0.95rem;
-            cursor: pointer; touch-action: manipulation;
-            min-height: 42px;
+            cursor: pointer; touch-action: manipulation; min-height: 42px;
         }
         .picker-tab:active { transform: scale(0.96); }
         .picker-tab.active { background: #3d362f; color: #f5f0ea; }
@@ -547,16 +451,12 @@
             <button class="nav-btn" id="nextMonth">〉</button>
         </div>
     </div>
-
     <button class="fab" id="showFormBtn">＋</button>
-
     <div class="calendar">
         <div class="weekday-row"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
         <div class="days-grid" id="daysGrid"></div>
     </div>
-
     <hr class="divider">
-
     <div class="daily-section">
         <div class="daily-title">
             <span id="selectedDateLabel">📅 點選日期查看</span>
@@ -568,7 +468,6 @@
     </div>
 </div>
 
-<!-- 年月選擇器 -->
 <div class="picker-overlay" id="pickerOverlay">
     <div class="picker-modal">
         <div class="picker-title">📅 選擇年月</div>
@@ -582,17 +481,14 @@
     </div>
 </div>
 
-<!-- 新增表單 (移除休假開關) -->
 <div class="form-overlay" id="formOverlay">
     <div class="form-handle"></div>
     <div class="form-title">✎ 新增預約</div>
-    
     <div class="date-select-row">
         <select id="selectYear"></select>
         <select id="selectMonth"></select>
         <select id="selectDay"></select>
     </div>
-
     <div class="form-row" id="normalFields">
         <select id="inputTime"></select>
         <input type="text" id="inputName" placeholder="客人姓名">
@@ -606,15 +502,18 @@
         <button class="cancel-btn" id="cancelBtn">取消</button>
         <button class="submit-btn" id="saveBtn">✦ 儲存</button>
     </div>
-    <div class="hint-text">💡 雙擊月曆日期可快速切換休假</div>
+    <div class="hint-text">💡 點兩下日期可切換休假</div>
 </div>
 
 <script>
     // ============================================================
-    // API 與資料層
+    // API 網址 (您的 Google Apps Script)
     // ============================================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbxyESEXKVH8ELbnggNSPd5d-6f1EUcsQBKtvmUy4O0k3lgvg3RwgPJVh0lIOGYolmaX/exec';
 
+    // ============================================================
+    // 資料層
+    // ============================================================
     let currentViewDate = new Date();
     let selectedDate = new Date();
     let bookings = {};
@@ -634,7 +533,7 @@
     // ============================================================
     async function loadFromCloud() {
         try {
-            const response = await fetch(`${API_URL}?action=get`);
+            const response = await fetch(`${API_URL}?action=get&t=${Date.now()}`);
             const data = await response.json();
             bookings = {};
             holidays = {};
@@ -711,7 +610,7 @@
     }
 
     // ============================================================
-    // 工具
+    // 工具函數
     // ============================================================
     function toDateStr(date) {
         const y = date.getFullYear();
@@ -762,9 +661,6 @@
         });
     }
 
-    // ============================================================
-    // 日期選擇器 (表單用)
-    // ============================================================
     function renderDateSelectors(year, month, day) {
         const yearSelect = document.getElementById('selectYear');
         const monthSelect = document.getElementById('selectMonth');
@@ -804,31 +700,54 @@
     }
 
     // ============================================================
-    // 雙擊切換休假 (極速版 - 直接操作DOM + 非同步雲端)
+    // 雙擊切換休假 (支援手機 touch + 電腦 click)
     // ============================================================
+    let lastTapTime = 0;
+    let tapTimeout = null;
+
+    function handleDayTap(el, dateObj) {
+        const now = Date.now();
+        const timeSince = now - lastTapTime;
+        lastTapTime = now;
+
+        if (timeSince < 400 && timeSince > 0) {
+            // 雙擊/雙點
+            clearTimeout(tapTimeout);
+            toggleHolidayByDoubleClick(dateObj);
+        } else {
+            // 單擊
+            tapTimeout = setTimeout(() => {
+                const y = parseInt(el.dataset.year);
+                const m = parseInt(el.dataset.month);
+                const d = parseInt(el.dataset.day);
+                selectedDate = new Date(y, m, d);
+                renderCalendar();
+                renderDailyList();
+            }, 250);
+        }
+    }
+
     async function toggleHolidayByDoubleClick(dateObj) {
         const dateStr = toDateStr(dateObj);
         const isHolidayNow = isHoliday(dateStr);
 
-        // 若有預約，不可設為休假 (但可取消)
         const hasBooking = (bookings[dateStr] && bookings[dateStr].length > 0);
         if (!isHolidayNow && hasBooking) {
-            alert(`⚠️ ${dateStr} 已有預約，無法設為休假。請先刪除預約。`);
+            alert(`⚠️ ${dateStr} 已有預約，無法設為休假`);
             return;
         }
 
-        // === 立即更新 UI (先視覺反饋) ===
+        // 立即更新 UI
         if (isHolidayNow) {
             delete holidays[dateStr];
         } else {
             holidays[dateStr] = true;
         }
         localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
-        // 立即重新渲染月曆和清單 (無需等待雲端)
         renderCalendar();
         renderDailyList();
 
-        // === 非同步更新雲端 (不阻塞UI) ===
+        // 背景同步雲端
         try {
             if (isHolidayNow) {
                 await deleteFromCloud(dateStr, '', '', true);
@@ -837,7 +756,6 @@
             }
         } catch (error) {
             console.error('雲端同步失敗', error);
-            // 若雲端失敗，復原本地狀態 (但保持UI一致)
             if (isHolidayNow) {
                 holidays[dateStr] = true;
             } else {
@@ -846,12 +764,12 @@
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             renderCalendar();
             renderDailyList();
-            alert('雲端同步失敗，已復原本地狀態');
+            alert('雲端同步失敗，已復原');
         }
     }
 
     // ============================================================
-    // 渲染月曆 (雙擊事件優化 - 無防抖延遲)
+    // 渲染月曆
     // ============================================================
     function renderCalendar() {
         const year = currentViewDate.getFullYear();
@@ -919,33 +837,30 @@
 
         grid.innerHTML = html;
 
-        // 單擊：選取日期
+        // 綁定事件 (同時支援 click 和 touch)
         grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
-            el.addEventListener('click', function(e) {
-                // 避免雙擊觸發單擊
-                if (this.dataset.dblclick) return;
-                const y = parseInt(this.dataset.year);
-                const m = parseInt(this.dataset.month);
-                const d = parseInt(this.dataset.day);
-                selectedDate = new Date(y, m, d);
-                renderCalendar();
-                renderDailyList();
-            });
+            const y = parseInt(el.dataset.year);
+            const m = parseInt(el.dataset.month);
+            const d = parseInt(el.dataset.day);
+            const dateObj = new Date(y, m, d);
 
-            // 雙擊：切換休假 (直接執行，無延遲)
-            el.addEventListener('dblclick', function(e) {
-                e.stopPropagation();
-                // 標記正在雙擊，防止單擊事件干擾
-                this.dataset.dblclick = 'true';
-                const y = parseInt(this.dataset.year);
-                const m = parseInt(this.dataset.month);
-                const d = parseInt(this.dataset.day);
-                const dateObj = new Date(y, m, d);
-                // 直接執行，不等待
-                toggleHolidayByDoubleClick(dateObj);
-                // 短暫標記後清除，允許後續單擊
-                setTimeout(() => { delete this.dataset.dblclick; }, 100);
-            });
+            // 移除舊事件避免重複綁定
+            el.removeEventListener('click', el._clickHandler);
+            el.removeEventListener('touchend', el._touchHandler);
+
+            // 電腦用 click
+            el._clickHandler = function(e) {
+                e.preventDefault();
+                handleDayTap(this, dateObj);
+            };
+            el.addEventListener('click', el._clickHandler);
+
+            // 手機用 touchend (更靈敏)
+            el._touchHandler = function(e) {
+                e.preventDefault();
+                handleDayTap(this, dateObj);
+            };
+            el.addEventListener('touchend', el._touchHandler);
         });
     }
 
@@ -966,7 +881,7 @@
         
         if (isHolidayFlag) {
             countEl.textContent = '🛑 休假';
-            container.innerHTML = `<div class="empty-state" style="border-color:#d32f2f; color:#d32f2f; background:#ffebee;">📌 今日為公休日 (雙擊日期可取消)</div>`;
+            container.innerHTML = `<div class="empty-state" style="border-color:#d32f2f; color:#d32f2f; background:#ffebee;">📌 今日為公休日 (點兩下日期可取消)</div>`;
             return;
         }
 
@@ -1093,7 +1008,7 @@
     }
 
     // ============================================================
-    // 表單控制 (無休假開關)
+    // 表單控制
     // ============================================================
     function resetForm() {
         document.getElementById('inputName').value = '';
@@ -1152,7 +1067,7 @@
     }
 
     // ============================================================
-    // 儲存 (僅預約)
+    // 儲存預約
     // ============================================================
     async function saveBooking() {
         if (isSaving) return;
@@ -1230,9 +1145,10 @@
     }
 
     // ============================================================
-    // 初始化
+    // 初始化 + 自動同步
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
+        // 載入資料
         await loadFromCloud();
 
         let today = new Date();
@@ -1246,6 +1162,7 @@
         updateServiceButtons();
         renderDateSelectors(today.getFullYear(), today.getMonth(), today.getDate());
 
+        // 監聽日期變化
         document.getElementById('selectYear').addEventListener('change', function() {
             const year = parseInt(this.value);
             const month = parseInt(document.getElementById('selectMonth').value);
@@ -1261,6 +1178,7 @@
             updateDays(year, month, day > maxDay ? maxDay : day);
         });
 
+        // 按鈕事件
         document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
         document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
         document.getElementById('monthLabel').addEventListener('click', openPicker);
@@ -1290,6 +1208,24 @@
 
         renderCalendar();
         renderDailyList();
+
+        // === 自動每 30 秒同步一次 ===
+        setInterval(async function() {
+            console.log('🔄 自動同步中...');
+            await loadFromCloud();
+            renderCalendar();
+            renderDailyList();
+        }, 30000);
+
+        // === 當頁面重新獲得焦點時也同步 ===
+        document.addEventListener('visibilitychange', async function() {
+            if (!document.hidden) {
+                console.log('🔄 頁面重新可見，同步中...');
+                await loadFromCloud();
+                renderCalendar();
+                renderDailyList();
+            }
+        });
     });
 </script>
 </body>
