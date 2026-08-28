@@ -507,7 +507,7 @@
 
 <script>
     // ============================================================
-    // ✅ 您的 API 網址
+    // API 網址
     // ============================================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbz8tJzpEZ_V96UyI4vfkOSWxp2oXfRdtWsZK-Vn6T_6qIbMC04Ly99wbkVlO9FkgeaO/exec';
 
@@ -529,7 +529,42 @@
     const YEAR_END = 2036;
 
     // ============================================================
-    // 雲端儲存 - 強制從雲端讀取最新資料
+    // 修正日期格式：將 ISO 字串轉為 YYYY-MM-DD
+    // ============================================================
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        if (dateStr.includes('T')) {
+            const d = new Date(dateStr);
+            if (!isNaN(d)) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            }
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        return dateStr;
+    }
+
+    // ============================================================
+    // 修正時間格式：將 ISO 字串轉為 HH:MM
+    // ============================================================
+    function formatTime(timeStr) {
+        if (!timeStr) return '';
+        if (timeStr.includes('T')) {
+            const d = new Date(timeStr);
+            if (!isNaN(d)) {
+                const h = String(d.getHours()).padStart(2, '0');
+                const m = String(d.getMinutes()).padStart(2, '0');
+                return `${h}:${m}`;
+            }
+        }
+        if (/^\d{2}:\d{2}$/.test(timeStr)) return timeStr;
+        return timeStr;
+    }
+
+    // ============================================================
+    // 雲端讀取
     // ============================================================
     async function loadFromCloud() {
         try {
@@ -538,35 +573,33 @@
             const text = await response.text();
             
             let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
+            try { data = JSON.parse(text); } catch(e) {
                 console.error('JSON 解析失敗:', text);
                 return false;
             }
             
-            // 完全重置資料
             bookings = {};
             holidays = {};
             
             if (Array.isArray(data)) {
                 data.forEach(item => {
+                    const dateStr = formatDate(item.date || '');
+                    if (!dateStr) return;
+                    
                     if (item.holiday === true) {
-                        holidays[item.date] = true;
-                    } else if (item.date) {
-                        if (!bookings[item.date]) bookings[item.date] = [];
-                        bookings[item.date].push({
-                            time: item.time || '',
-                            name: item.name || '',
-                            services: Array.isArray(item.services) ? item.services : 
-                                      (item.services ? item.services.split(',') : []),
-                            otherNote: item.otherNote || ''
-                        });
+                        holidays[dateStr] = true;
+                    } else {
+                        const timeStr = formatTime(item.time || '');
+                        const name = item.name || '未命名';
+                        const services = Array.isArray(item.services) ? item.services : [];
+                        const otherNote = item.otherNote || '';
+                        
+                        if (!bookings[dateStr]) bookings[dateStr] = [];
+                        bookings[dateStr].push({ time: timeStr, name, services, otherNote });
                     }
                 });
             }
             
-            // 儲存到本地
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             return true;
@@ -581,7 +614,7 @@
     }
 
     // ============================================================
-    // 雲端儲存 - 新增/刪除 (修正為正確的參數傳遞)
+    // 雲端寫入
     // ============================================================
     async function callCloudAPI(action, params = {}) {
         try {
@@ -591,16 +624,12 @@
                 formData.append(key, params[key] !== undefined ? params[key] : '');
             });
             
-            const response = await fetch(API_URL, {
+            await fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
             });
-            
-            // no-cors 模式下無法讀取 response，所以假設成功
             return true;
         } catch (error) {
             console.error('雲端 API 呼叫失敗:', error);
@@ -754,7 +783,6 @@
             return;
         }
 
-        // 先更新本地
         if (isHolidayNow) {
             delete holidays[dateStr];
         } else {
@@ -764,15 +792,10 @@
         renderCalendar();
         renderDailyList();
 
-        // 同步到雲端
         const success = await saveToCloud(dateStr, '', '休假', [], '', !isHolidayNow);
         if (!success) {
-            // 復原
-            if (isHolidayNow) {
-                holidays[dateStr] = true;
-            } else {
-                delete holidays[dateStr];
-            }
+            if (isHolidayNow) holidays[dateStr] = true;
+            else delete holidays[dateStr];
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             renderCalendar();
             renderDailyList();
@@ -935,7 +958,6 @@
                 const name = this.dataset.name;
                 
                 if (confirm(`確定刪除 ${name} 的預約嗎？`)) {
-                    // 先更新本地
                     const list = bookings[date] || [];
                     const idx = list.findIndex(item => item.time === time && item.name === name);
                     if (idx > -1) {
@@ -945,8 +967,6 @@
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
                     renderCalendar();
                     renderDailyList();
-                    
-                    // 同步到雲端
                     await deleteFromCloud(date, time, name, false);
                 }
                 this.disabled = false;
@@ -1124,14 +1144,12 @@
                 }
             }
 
-            // 先更新本地
             if (!bookings[dateStr]) bookings[dateStr] = [];
             bookings[dateStr].push({ time, name, services: [...selectedServices], otherNote });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
             renderCalendar();
             renderDailyList();
 
-            // 同步到雲端
             await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
 
             resetForm();
@@ -1161,30 +1179,9 @@
     }
 
     // ============================================================
-    // 強制同步函數 (手動觸發)
-    // ============================================================
-    async function forceSync() {
-        const btn = document.getElementById('saveBtn');
-        const originalText = btn.textContent;
-        btn.textContent = '🔄 同步中...';
-        btn.disabled = true;
-        
-        await loadFromCloud();
-        renderCalendar();
-        renderDailyList();
-        
-        btn.textContent = '✅ 已同步';
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.disabled = false;
-        }, 1500);
-    }
-
-    // ============================================================
     // 初始化
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
-        // 先載入雲端資料
         await loadFromCloud();
 
         let today = new Date();
@@ -1243,14 +1240,12 @@
         renderCalendar();
         renderDailyList();
 
-        // 每 15 秒自動同步 (更頻繁)
         setInterval(async function() {
             await loadFromCloud();
             renderCalendar();
             renderDailyList();
         }, 15000);
 
-        // 頁面重新可見時同步
         document.addEventListener('visibilitychange', async function() {
             if (!document.hidden) {
                 await loadFromCloud();
