@@ -831,56 +831,139 @@
     // 雙擊切換休假
     // ============================================================
     let lastTapTime = 0;
+    let lastTapDate = '';
     let tapTimeout = null;
 
-    function handleDayTap(el, dateObj) {
+    function handleDayTap(el) {
+        const y = parseInt(el.dataset.year);
+        const m = parseInt(el.dataset.month);
+        const d = parseInt(el.dataset.day);
+
+        const dateObj = new Date(y, m, d);
+        const dateStr = toDateStr(dateObj);
+
         const now = Date.now();
         const timeSince = now - lastTapTime;
-        lastTapTime = now;
 
-        if (timeSince < 400 && timeSince > 0) {
-            clearTimeout(tapTimeout);
+        // 必須在 400ms 內，而且兩次點的是同一天，才算雙擊
+        const isDoubleTap =
+            timeSince > 0 &&
+            timeSince < 400 &&
+            lastTapDate === dateStr;
+
+        if (isDoubleTap) {
+            if (tapTimeout) {
+                clearTimeout(tapTimeout);
+                tapTimeout = null;
+            }
+
+            lastTapTime = 0;
+            lastTapDate = '';
+
             toggleHolidayByDoubleClick(dateObj);
-        } else {
-            tapTimeout = setTimeout(() => {
-                const y = parseInt(el.dataset.year);
-                const m = parseInt(el.dataset.month);
-                const d = parseInt(el.dataset.day);
-                selectedDate = new Date(y, m, d);
-                renderCalendar();
-                renderDailyList();
-            }, 250);
+            return;
         }
+
+        lastTapTime = now;
+        lastTapDate = dateStr;
+
+        if (tapTimeout) {
+            clearTimeout(tapTimeout);
+        }
+
+        tapTimeout = setTimeout(() => {
+            selectedDate = new Date(y, m, d);
+            renderCalendar();
+            renderDailyList();
+
+            tapTimeout = null;
+
+            if (Date.now() - lastTapTime >= 400) {
+                lastTapTime = 0;
+                lastTapDate = '';
+            }
+        }, 400);
     }
 
     async function toggleHolidayByDoubleClick(dateObj) {
-        const dateStr = toDateStr(dateObj);
-        const isHolidayNow = isHoliday(dateStr);
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
 
-        const hasBooking = (bookings[dateStr] && bookings[dateStr].length > 0);
+        console.log('🖱️ 切換休假日期:', dateStr);
+
+        const isHolidayNow = isHoliday(dateStr);
+        const hasBooking = bookings[dateStr] && bookings[dateStr].length > 0;
+
         if (!isHolidayNow && hasBooking) {
             alert(`⚠️ ${dateStr} 已有預約，無法設為休假`);
             return;
         }
 
         if (isHolidayNow) {
+            // 取消休假
             delete holidays[dateStr];
-        } else {
-            holidays[dateStr] = true;
+            localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+            renderCalendar();
+            renderDailyList();
+
+            const success = await saveToCloud(
+                dateStr,
+                '',
+                '休假',
+                [],
+                '',
+                false
+            );
+
+            if (!success) {
+                holidays[dateStr] = true;
+                localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+                renderCalendar();
+                renderDailyList();
+                alert('取消休假同步失敗，請再試一次');
+                return;
+            }
+
+            setTimeout(async () => {
+                await loadFromCloud();
+                renderCalendar();
+                renderDailyList();
+            }, 500);
+
+            return;
         }
+
+        // 設定休假
+        holidays[dateStr] = true;
         localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
         renderCalendar();
         renderDailyList();
 
-        const success = await saveToCloud(dateStr, '', '休假', [], '', !isHolidayNow);
+        const success = await saveToCloud(
+            dateStr,
+            '',
+            '休假',
+            [],
+            '',
+            true
+        );
+
         if (!success) {
-            if (isHolidayNow) holidays[dateStr] = true;
-            else delete holidays[dateStr];
+            delete holidays[dateStr];
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
             renderCalendar();
             renderDailyList();
-            alert('❌ 雲端同步失敗，已復原');
+            alert('設定休假同步失敗，請再試一次');
+            return;
         }
+
+        setTimeout(async () => {
+            await loadFromCloud();
+            renderCalendar();
+            renderDailyList();
+        }, 500);
     }
 
     // ============================================================
@@ -953,25 +1036,12 @@
         grid.innerHTML = html;
 
         grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
-            const y = parseInt(el.dataset.year);
-            const m = parseInt(el.dataset.month);
-            const d = parseInt(el.dataset.day);
-            const dateObj = new Date(y, m, d);
-
-            el.removeEventListener('click', el._clickHandler);
-            el.removeEventListener('touchend', el._touchHandler);
-
-            el._clickHandler = function(e) {
+            // 手機與電腦統一只用 click，避免 touchend + click 被算成兩次
+            el.onclick = function(e) {
                 e.preventDefault();
-                handleDayTap(this, dateObj);
+                e.stopPropagation();
+                handleDayTap(this);
             };
-            el.addEventListener('click', el._clickHandler);
-
-            el._touchHandler = function(e) {
-                e.preventDefault();
-                handleDayTap(this, dateObj);
-            };
-            el.addEventListener('touchend', el._touchHandler);
         });
     }
 
