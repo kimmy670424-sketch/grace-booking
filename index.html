@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes, viewport-fit=cover">
+    <title>恩典髮屋Grace</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="恩典髮屋">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💈</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💈</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Georgia', 'Noto Serif TC', 'Times New Roman', serif; }
+        html { height: 100%; }
+        body {
+            background: #f7f4f0;
+            min-height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 12px 12px 100px 12px;
+            padding-top: env(safe-area-inset-top, 12px);
+            padding-bottom: env(safe-area-inset-bottom, 100px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .app {
+            max-width: 900px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 22px 18px 24px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e4ddd6;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-right: 80px;
+        }
+        .shop-name {
+            font-size: 1.8rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #3e3a36;
+        }
+        .shop-name small {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: #a6978a;
+            margin-left: 4px;
+        }
+        .month-nav { display: flex; align-items: center; gap: 10px; }
+        .month-nav .nav-btn {
+            background: none;
+            border: 2px solid #ddd6cf;
+            border-radius: 40px;
+            padding: 8px 14px;
+            font-size: 1.3rem;
+            color: #5f554a;
+            cursor: pointer;
+            background: #fcfaf8;
+            touch-action: manipulation;
+            min-height: 48px;
+            min-width: 48px;
+        }
+        .month-nav .nav-btn:active { background: #e8e0d8; transform: scale(0.94); }
+        .month-label {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #3d362f;
+            min-width: 120px;
+            text-align: center;
+            cursor: pointer;
+            padding: 6px 14px;
+            border-radius: 40px;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            touch-action: manipulation;
+        }
+        .month-label:active { background: #e8e0d8; transform: scale(0.96); }
+        .month-label .year-part { color: #5f554a; }
+        .month-label .month-part { color: #3d362f; }
+
+        .fab {
+            position: absolute;
+            top: 18px;
+            right: 16px;
+            width: 52px;
+            height: 52px;
+            border-radius: 52px;
+            background: #3d362f;
+            color: #f5f0ea;
+            border: none;
+            font-size: 2.2rem;
+            font-weight: 200;
+            box-shadow: 0 6px 20px rgba(50,40,30,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            touch-action: manipulation;
+            transition: 0.15s;
+        }
+        .fab:active { transform: scale(0.88); background: #5a4d40; }
+        .fab:disabled { opacity: 0.4; transform: scale(0.95); pointer-events: none; }
+
+        .calendar { margin: 6px 0 10px 0; }
+        .weekday-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 1.0rem;
+            color: #a6978a;
+            padding: 8px 0;
+            border-bottom: 2px solid #f0ebe5;
+            font-weight: 600;
+        }
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .day-cell {
+            background: #fcfaf8;
+            border-radius: 14px;
+            border: 2px solid transparent;
+            padding: 4px 4px;
+            min-height: 76px;
+            cursor: pointer;
+            touch-action: manipulation;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: background 0.1s;
+        }
+        .day-cell:active { background: #ede8e2; transform: scale(0.96); }
+        .day-cell.empty { background: transparent; cursor: default; min-height: 30px; }
+        .day-cell.empty:active { transform: none; }
+        .day-cell.today { border-color: #b7a698; background: #f8f4ef; }
+        .day-cell.selected { background: #3d362f; color: #f5f0ea; }
+        .day-cell.selected .day-number { color: #f5f0ea; }
+        /* 休假紅字 */
+        .day-cell.holiday .day-number { color: #d32f2f !important; font-weight: 700; }
+        .day-cell.holiday .holiday-badge {
+            background: #d32f2f;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 2px;
+            align-self: center;
+            letter-spacing: 1px;
+        }
+        .day-cell.selected.holiday .day-number { color: #ff8a80 !important; }
+        .day-cell.selected.holiday .holiday-badge { background: #b71c1c; }
+
+        .day-number {
+            font-size: 1.0rem;
+            font-weight: 700;
+            color: #3d362f;
+            padding-left: 4px;
+            padding-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .day-cell.selected .day-number { color: #f5f0ea; }
+
+        .day-bookings {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+            overflow: hidden;
+        }
+        .mini-booking {
+            background: rgba(61, 54, 47, 0.08);
+            border-radius: 8px;
+            padding: 3px 6px;
+            font-size: 0.7rem;
+            line-height: 1.3;
+            color: #3d362f;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .day-cell.selected .mini-booking {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f5f0ea;
+        }
+        .mini-booking .mini-time {
+            font-weight: 700;
+            color: #5f554a;
+            flex-shrink: 0;
+            font-size: 0.65rem;
+        }
+        .day-cell.selected .mini-booking .mini-time { color: #e8e0d8; }
+        .mini-booking .mini-name {
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            font-size: 0.65rem;
+        }
+        .mini-booking .mini-service {
+            font-size: 0.6rem;
+            color: #7f7164;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.5);
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .day-cell.selected .mini-booking .mini-service {
+            background: rgba(255,255,255,0.12);
+            color: #d6ccc2;
+        }
+        .more-indicator {
+            font-size: 0.65rem;
+            color: #a6978a;
+            text-align: center;
+            padding: 1px 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .day-cell.selected .more-indicator { color: #d6ccc2; }
+
+        .divider {
+            border: none;
+            border-top: 2px solid #f0ebe5;
+            margin: 12px 0 8px 0;
+        }
+
+        .daily-section { margin-top: 4px; padding-top: 4px; }
+        .daily-title {
+            font-size: 1.1rem;
+            color: #5f554a;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .daily-title .booking-count {
+            background: #ede8e2;
+            padding: 2px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            color: #5b534a;
+        }
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 40px;
+        }
+        .booking-card {
+            background: #fcfaf7;
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ece5dd;
+            touch-action: manipulation;
+        }
+        .booking-card:active { background: #f6f0ea; transform: scale(0.98); }
+        .card-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .time-block {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3d362f;
+            min-width: 60px;
+        }
+        .info-block .guest-name {
+            font-size: 1.0rem;
+            font-weight: 600;
+            color: #2c2621;
+        }
+        .service-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+        .tag {
+            background: #ede7e0;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            color: #4f453b;
+            font-weight: 500;
+        }
+        .tag-other { background: #e8e0d8; font-style: italic; }
+        .delete-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: #bfb4a8;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 40px;
+            touch-action: manipulation;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-btn:active { background: #efe8e0; }
+        .delete-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px 16px;
+            color: #bba294;
+            font-size: 1.0rem;
+            background: #fbf9f7;
+            border-radius: 20px;
+            border: 2px dashed #e1d7ce;
+        }
+
+        /* 表單 */
+        .form-overlay {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(255,252,248,0.97);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border-radius: 28px 28px 0 0;
+            padding: 20px 18px 24px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -8px 30px rgba(0,0,0,0.04);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            max-width: 900px;
+            margin: 0 auto;
+            z-index: 1000;
+            border-top: 2px solid #e5dcd3;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .form-overlay.active { transform: translateY(0); }
+        .form-handle { width: 40px; height: 4px; background: #d6ccc2; border-radius: 8px; margin: 0 auto 14px auto; }
+        .form-title {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #3d362f;
+            text-align: center;
+            margin-bottom: 14px;
+            letter-spacing: 2px;
+        }
+        .date-select-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .date-select-row select {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 8px;
+            border: 2px solid #ddd3ca;
+            border-radius: 40px;
+            background: #fefcf9;
+            font-size: 0.95rem;
+            color: #2c2621;
+            outline: none;
+            touch-action: manipulation;
+            min-height: 44px;
+            text-align: center;
+        }
+        .date-select-row select:focus { border-color: #b7a698; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .form-row select, .form-row input {
+            flex: 1; min-width: 100px; padding: 12px 16px;
+            border: 2px solid #ddd3ca; border-radius: 40px;
+            background: #fefcf9; font-size: 1.0rem; color: #2c2621; outline: none;
+            touch-action: manipulation;
+            min-height: 48px;
+        }
+        .form-row select:focus, .form-row input:focus { border-color: #b7a698; }
+        .service-label {
+            font-size: 0.95rem;
+            color: #6b5f53;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .service-picker { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px 0; }
+        .service-btn {
+            padding: 8px 18px;
+            border-radius: 40px;
+            border: 2px solid #ddd3ca;
+            background: #fcfaf7;
+            font-size: 1.0rem;
+            color: #3d362f;
+            cursor: pointer;
+            touch-action: manipulation;
+            min-height: 42px;
+            min-width: 56px;
+        }
+        .service-btn:active { transform: scale(0.94); }
+        .service-btn.active { background: #3d362f; color: #f5f0ea; border-color: #3d362f; }
+        .other-note-row { display: none; margin-bottom: 10px; }
+        .other-note-row.show { display: flex; }
+        .other-note-row input {
+            flex: 1; padding: 12px 16px; border: 2px solid #ddd3ca;
+            border-radius: 40px; background: #fefcf9; font-size: 1.0rem; outline: none;
+            min-height: 44px;
+        }
+        .form-actions { display: flex; gap: 10px; margin-top: 6px; }
+        .submit-btn {
+            flex: 2; padding: 14px; background: #3d362f; color: #f5f0ea;
+            border: none; border-radius: 40px; font-size: 1.1rem; letter-spacing: 1px;
+            cursor: pointer; touch-action: manipulation; min-height: 52px;
+            transition: 0.15s;
+        }
+        .submit-btn:active { background: #5a4d40; transform: scale(0.97); }
+        .submit-btn:disabled { opacity: 0.5; transform: scale(0.97); pointer-events: none; }
+        .cancel-btn {
+            flex: 1; padding: 14px; background: none; border: 2px solid #ddd3ca;
+            border-radius: 40px; font-size: 1.0rem; color: #7f7164;
+            cursor: pointer; touch-action: manipulation; min-height: 52px;
+        }
+        .cancel-btn:active { background: #ede7e0; transform: scale(0.97); }
+        .hint-text { color: #b3a496; font-size: 0.8rem; text-align: center; margin-top: 10px; }
+
+        .picker-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; padding: 20px;
+        }
+        .picker-overlay.show { display: flex; }
+        .picker-modal {
+            background: #ffffff; border-radius: 28px; padding: 24px 20px 20px;
+            max-width: 400px; width: 100%; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .picker-modal .picker-title {
+            font-size: 1.2rem;
+            color: #3d362f;
+            text-align: center;
+            margin-bottom: 14px;
+            letter-spacing: 2px;
+        }
+        .picker-grid { display: grid; gap: 10px; }
+        .picker-grid.year-grid { grid-template-columns: repeat(4, 1fr); }
+        .picker-grid.month-grid { grid-template-columns: repeat(3, 1fr); }
+        .picker-item {
+            padding: 12px 6px;
+            border-radius: 24px;
+            border: 2px solid #ddd6cf;
+            background: #fcfaf8;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1.0rem;
+            color: #3d362f;
+            touch-action: manipulation;
+            min-height: 44px;
+        }
+        .picker-item:active { transform: scale(0.92); background: #e8e0d8; }
+        .picker-item.active { background: #3d362f; color: #f5f0ea; border-color: #3d362f; }
+        .picker-close-btn {
+            display: block; width: 100%; margin-top: 14px; padding: 14px;
+            border: none; border-radius: 40px; background: #ede8e2;
+            color: #5b534a; font-size: 1.0rem; cursor: pointer; touch-action: manipulation;
+            min-height: 48px;
+        }
+        .picker-close-btn:active { background: #ddd3ca; transform: scale(0.97); }
+        .picker-tabs { display: flex; gap: 10px; margin-bottom: 12px; }
+        .picker-tab {
+            flex: 1; padding: 10px; border: none; border-radius: 24px;
+            background: #f3efe9; color: #5b534a; font-size: 0.95rem;
+            cursor: pointer; touch-action: manipulation;
+            min-height: 42px;
+        }
+        .picker-tab:active { transform: scale(0.96); }
+        .picker-tab.active { background: #3d362f; color: #f5f0ea; }
+        .picker-body { display: none; }
+        .picker-body.active { display: block; }
+
+        @media (max-width: 480px) {
+            .app { padding: 16px 12px 18px; border-radius: 20px; }
+            .shop-name { font-size: 1.4rem; }
+            .shop-name small { font-size: 0.9rem; }
+            .month-nav .nav-btn { padding: 6px 12px; font-size: 1.1rem; min-height: 40px; min-width: 40px; }
+            .month-label { font-size: 1.0rem; min-width: 90px; padding: 4px 10px; }
+            .fab { width: 44px; height: 44px; font-size: 1.8rem; top: 14px; right: 12px; }
+            .shop-header { padding-right: 64px; }
+            .day-cell { min-height: 64px; padding: 2px 2px; border-radius: 10px; }
+            .day-number { font-size: 0.85rem; }
+            .mini-booking { font-size: 0.6rem; padding: 2px 4px; }
+            .mini-booking .mini-time { font-size: 0.55rem; }
+            .mini-booking .mini-name { font-size: 0.55rem; }
+            .mini-booking .mini-service { font-size: 0.5rem; padding: 1px 4px; }
+            .more-indicator { font-size: 0.55rem; }
+            .daily-title { font-size: 0.95rem; }
+            .booking-card { padding: 10px 12px; }
+            .time-block { font-size: 0.95rem; min-width: 50px; }
+            .info-block .guest-name { font-size: 0.9rem; }
+            .tag { font-size: 0.65rem; padding: 2px 8px; }
+            .delete-btn { font-size: 1.1rem; min-width: 36px; min-height: 36px; padding: 4px 10px; }
+            .form-overlay { padding: 16px 12px 18px; border-radius: 20px 20px 0 0; }
+            .form-title { font-size: 1.1rem; }
+            .date-select-row select { font-size: 0.85rem; padding: 8px 6px; min-height: 38px; }
+            .form-row select, .form-row input { padding: 10px 12px; font-size: 0.9rem; min-height: 42px; }
+            .service-btn { padding: 6px 14px; font-size: 0.9rem; min-height: 36px; min-width: 50px; }
+            .submit-btn { padding: 12px; font-size: 1.0rem; min-height: 44px; }
+            .cancel-btn { padding: 12px; font-size: 0.9rem; min-height: 44px; }
+            .picker-modal { padding: 18px 14px 16px; }
+            .picker-item { font-size: 0.9rem; padding: 10px 4px; min-height: 38px; }
+            .picker-tab { font-size: 0.85rem; padding: 8px; min-height: 36px; }
+            .picker-close-btn { font-size: 0.9rem; padding: 12px; min-height: 42px; }
+            .days-grid { gap: 4px; }
+        }
+        @media (min-width: 769px) {
+            .day-cell { min-height: 100px; }
+            .mini-booking { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="shop-header">
+        <div class="shop-name">恩典髮屋 <small>Grace</small></div>
+        <div class="month-nav">
+            <button class="nav-btn" id="prevMonth">〈</button>
+            <span class="month-label" id="monthLabel">
+                <span class="year-part" id="yearDisplay">2026年</span>
+                <span class="month-part" id="monthDisplay">8月</span>
+            </span>
+            <button class="nav-btn" id="nextMonth">〉</button>
+        </div>
+    </div>
+
+    <button class="fab" id="showFormBtn">＋</button>
+
+    <div class="calendar">
+        <div class="weekday-row"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+        <div class="days-grid" id="daysGrid"></div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="daily-section">
+        <div class="daily-title">
+            <span id="selectedDateLabel">📅 點選日期查看</span>
+            <span class="booking-count" id="bookingCount">0 筆</span>
+        </div>
+        <div id="dailyBookingList" class="timeline">
+            <div class="empty-state">👆 點擊月曆上的日期查看預約</div>
+        </div>
+    </div>
+</div>
+
+<!-- 年月選擇器 -->
+<div class="picker-overlay" id="pickerOverlay">
+    <div class="picker-modal">
+        <div class="picker-title">📅 選擇年月</div>
+        <div class="picker-tabs">
+            <button class="picker-tab active" data-tab="year">年份</button>
+            <button class="picker-tab" data-tab="month">月份</button>
+        </div>
+        <div class="picker-body active" id="yearPickerBody"><div class="picker-grid year-grid" id="yearGrid"></div></div>
+        <div class="picker-body" id="monthPickerBody"><div class="picker-grid month-grid" id="monthGrid"></div></div>
+        <button class="picker-close-btn" id="pickerCloseBtn">✕ 關閉</button>
+    </div>
+</div>
+
+<!-- 新增表單 (移除休假開關) -->
+<div class="form-overlay" id="formOverlay">
+    <div class="form-handle"></div>
+    <div class="form-title">✎ 新增預約</div>
+    
+    <div class="date-select-row">
+        <select id="selectYear"></select>
+        <select id="selectMonth"></select>
+        <select id="selectDay"></select>
+    </div>
+
+    <div class="form-row" id="normalFields">
+        <select id="inputTime"></select>
+        <input type="text" id="inputName" placeholder="客人姓名">
+    </div>
+    <span class="service-label" id="serviceLabel">— 服務項目（可複選） —</span>
+    <div class="service-picker" id="servicePicker"></div>
+    <div class="other-note-row" id="otherNoteRow">
+        <input type="text" id="otherNote" placeholder="請輸入其他服務備註">
+    </div>
+    <div class="form-actions">
+        <button class="cancel-btn" id="cancelBtn">取消</button>
+        <button class="submit-btn" id="saveBtn">✦ 儲存</button>
+    </div>
+    <div class="hint-text">💡 雙擊月曆日期可快速切換休假</div>
+</div>
+
+<script>
+    // ============================================================
+    // API 與資料層
+    // ============================================================
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxyESEXKVH8ELbnggNSPd5d-6f1EUcsQBKtvmUy4O0k3lgvg3RwgPJVh0lIOGYolmaX/exec';
+
+    let currentViewDate = new Date();
+    let selectedDate = new Date();
+    let bookings = {};
+    let holidays = {};
+    let selectedServices = [];
+    let isSaving = false;
+
+    const STORAGE_KEY = 'grace_booking_data';
+    const HOLIDAY_KEY = 'grace_holiday_data';
+    const SERVICE_LIST = ['洗', '剪', '燙', '染', '其他'];
+    const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const YEAR_START = 2026;
+    const YEAR_END = 2036;
+
+    // ============================================================
+    // 雲端儲存
+    // ============================================================
+    async function loadFromCloud() {
+        try {
+            const response = await fetch(`${API_URL}?action=get`);
+            const data = await response.json();
+            bookings = {};
+            holidays = {};
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    if (item.holiday === true) {
+                        holidays[item.date] = true;
+                    } else {
+                        if (!bookings[item.date]) bookings[item.date] = [];
+                        bookings[item.date].push({
+                            time: item.time || '',
+                            name: item.name || '',
+                            services: Array.isArray(item.services) ? item.services : [],
+                            otherNote: item.otherNote || ''
+                        });
+                    }
+                });
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+            localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+            return true;
+        } catch (error) {
+            console.error('雲端載入失敗，使用本地備份', error);
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) try { bookings = JSON.parse(stored); } catch(e) { bookings = {}; }
+            const hStored = localStorage.getItem(HOLIDAY_KEY);
+            if (hStored) try { holidays = JSON.parse(hStored); } catch(e) { holidays = {}; }
+            return false;
+        }
+    }
+
+    async function saveToCloud(date, time, name, services, otherNote, isHoliday = false) {
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add',
+                    date: date,
+                    time: time || '',
+                    name: name || '',
+                    services: services || [],
+                    otherNote: otherNote || '',
+                    holiday: isHoliday
+                })
+            });
+            return true;
+        } catch (error) {
+            console.error('雲端儲存失敗', error);
+            return false;
+        }
+    }
+
+    async function deleteFromCloud(date, time, name, isHoliday = false) {
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete',
+                    date: date,
+                    time: time || '',
+                    name: name || '',
+                    holiday: isHoliday
+                })
+            });
+            return true;
+        } catch (error) {
+            console.error('雲端刪除失敗', error);
+            return false;
+        }
+    }
+
+    // ============================================================
+    // 工具
+    // ============================================================
+    function toDateStr(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function getBookingsForDate(dateStr) {
+        return (bookings[dateStr] || []).sort((a, b) => a.time.localeCompare(b.time));
+    }
+
+    function isHoliday(dateStr) {
+        return holidays[dateStr] === true;
+    }
+
+    function isSameDay(d1, d2) {
+        return d1.getFullYear() === d2.getFullYear() &&
+               d1.getMonth() === d2.getMonth() &&
+               d1.getDate() === d2.getDate();
+    }
+
+    function getDaysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+
+    function generateTimeOptions(selectedTime) {
+        const options = [];
+        for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 10) {
+                const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                options.push({ value: timeStr, selected: timeStr === selectedTime });
+            }
+        }
+        return options;
+    }
+
+    function renderTimeSelect(selectedTime) {
+        const select = document.getElementById('inputTime');
+        const options = generateTimeOptions(selectedTime || '10:00');
+        select.innerHTML = '';
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.value;
+            if (opt.selected) option.selected = true;
+            select.appendChild(option);
+        });
+    }
+
+    // ============================================================
+    // 日期選擇器 (表單用)
+    // ============================================================
+    function renderDateSelectors(year, month, day) {
+        const yearSelect = document.getElementById('selectYear');
+        const monthSelect = document.getElementById('selectMonth');
+        const daySelect = document.getElementById('selectDay');
+
+        yearSelect.innerHTML = '';
+        for (let y = YEAR_START; y <= YEAR_END; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = `${y}年`;
+            if (y === year) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        monthSelect.innerHTML = '';
+        for (let m = 0; m < 12; m++) {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = `${m + 1}月`;
+            if (m === month) opt.selected = true;
+            monthSelect.appendChild(opt);
+        }
+        updateDays(year, month, day);
+    }
+
+    function updateDays(year, month, selectedDay) {
+        const daySelect = document.getElementById('selectDay');
+        const days = getDaysInMonth(year, month);
+        daySelect.innerHTML = '';
+        for (let d = 1; d <= days; d++) {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = `${d}日`;
+            if (d === selectedDay) opt.selected = true;
+            daySelect.appendChild(opt);
+        }
+    }
+
+    // ============================================================
+    // 雙擊切換休假 (極速版 - 直接操作DOM + 非同步雲端)
+    // ============================================================
+    async function toggleHolidayByDoubleClick(dateObj) {
+        const dateStr = toDateStr(dateObj);
+        const isHolidayNow = isHoliday(dateStr);
+
+        // 若有預約，不可設為休假 (但可取消)
+        const hasBooking = (bookings[dateStr] && bookings[dateStr].length > 0);
+        if (!isHolidayNow && hasBooking) {
+            alert(`⚠️ ${dateStr} 已有預約，無法設為休假。請先刪除預約。`);
+            return;
+        }
+
+        // === 立即更新 UI (先視覺反饋) ===
+        if (isHolidayNow) {
+            delete holidays[dateStr];
+        } else {
+            holidays[dateStr] = true;
+        }
+        localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+        // 立即重新渲染月曆和清單 (無需等待雲端)
+        renderCalendar();
+        renderDailyList();
+
+        // === 非同步更新雲端 (不阻塞UI) ===
+        try {
+            if (isHolidayNow) {
+                await deleteFromCloud(dateStr, '', '', true);
+            } else {
+                await saveToCloud(dateStr, '', '休假', [], '', true);
+            }
+        } catch (error) {
+            console.error('雲端同步失敗', error);
+            // 若雲端失敗，復原本地狀態 (但保持UI一致)
+            if (isHolidayNow) {
+                holidays[dateStr] = true;
+            } else {
+                delete holidays[dateStr];
+            }
+            localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+            renderCalendar();
+            renderDailyList();
+            alert('雲端同步失敗，已復原本地狀態');
+        }
+    }
+
+    // ============================================================
+    // 渲染月曆 (雙擊事件優化 - 無防抖延遲)
+    // ============================================================
+    function renderCalendar() {
+        const year = currentViewDate.getFullYear();
+        const month = currentViewDate.getMonth();
+
+        document.getElementById('yearDisplay').textContent = `${year}年`;
+        document.getElementById('monthDisplay').textContent = `${month + 1}月`;
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+
+        const grid = document.getElementById('daysGrid');
+        let html = '';
+
+        for (let i = 0; i < firstDay; i++) {
+            html += `<div class="day-cell empty"></div>`;
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            const dateStr = toDateStr(dateObj);
+            const list = getBookingsForDate(dateStr);
+            const isToday = isSameDay(dateObj, today);
+            const isSelected = isSameDay(dateObj, selectedDate);
+            const isHolidayFlag = isHoliday(dateStr);
+
+            let classes = 'day-cell';
+            if (isToday) classes += ' today';
+            if (isSelected) classes += ' selected';
+            if (isHolidayFlag) classes += ' holiday';
+
+            const displayItems = list.slice(0, 3);
+            const remaining = list.length - 3;
+
+            let bookingsHtml = '';
+            if (isHolidayFlag) {
+                bookingsHtml = `<div class="holiday-badge">🛑 休</div>`;
+            } else if (list.length > 0) {
+                displayItems.forEach(item => {
+                    let serviceText = item.services.join('');
+                    if (serviceText.includes('其他') && item.otherNote) {
+                        serviceText = '其他';
+                    }
+                    bookingsHtml += `
+                        <div class="mini-booking">
+                            <span class="mini-time">${item.time}</span>
+                            <span class="mini-name">${item.name}</span>
+                            ${serviceText ? `<span class="mini-service">${serviceText}</span>` : ''}
+                        </div>
+                    `;
+                });
+                if (remaining > 0) {
+                    bookingsHtml += `<div class="more-indicator">+ ${remaining} 筆</div>`;
+                }
+            }
+
+            html += `
+                <div class="${classes}" data-year="${year}" data-month="${month}" data-day="${d}">
+                    <div class="day-number">${d}</div>
+                    <div class="day-bookings">${bookingsHtml}</div>
+                </div>
+            `;
+        }
+
+        grid.innerHTML = html;
+
+        // 單擊：選取日期
+        grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
+            el.addEventListener('click', function(e) {
+                // 避免雙擊觸發單擊
+                if (this.dataset.dblclick) return;
+                const y = parseInt(this.dataset.year);
+                const m = parseInt(this.dataset.month);
+                const d = parseInt(this.dataset.day);
+                selectedDate = new Date(y, m, d);
+                renderCalendar();
+                renderDailyList();
+            });
+
+            // 雙擊：切換休假 (直接執行，無延遲)
+            el.addEventListener('dblclick', function(e) {
+                e.stopPropagation();
+                // 標記正在雙擊，防止單擊事件干擾
+                this.dataset.dblclick = 'true';
+                const y = parseInt(this.dataset.year);
+                const m = parseInt(this.dataset.month);
+                const d = parseInt(this.dataset.day);
+                const dateObj = new Date(y, m, d);
+                // 直接執行，不等待
+                toggleHolidayByDoubleClick(dateObj);
+                // 短暫標記後清除，允許後續單擊
+                setTimeout(() => { delete this.dataset.dblclick; }, 100);
+            });
+        });
+    }
+
+    // ============================================================
+    // 渲染當日詳細清單
+    // ============================================================
+    function renderDailyList() {
+        const dateStr = toDateStr(selectedDate);
+        const list = getBookingsForDate(dateStr);
+        const isHolidayFlag = isHoliday(dateStr);
+        const container = document.getElementById('dailyBookingList');
+        const label = document.getElementById('selectedDateLabel');
+        const countEl = document.getElementById('bookingCount');
+
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        const wd = weekdays[selectedDate.getDay()];
+        label.textContent = `📅 ${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 週${wd}`;
+        
+        if (isHolidayFlag) {
+            countEl.textContent = '🛑 休假';
+            container.innerHTML = `<div class="empty-state" style="border-color:#d32f2f; color:#d32f2f; background:#ffebee;">📌 今日為公休日 (雙擊日期可取消)</div>`;
+            return;
+        }
+
+        countEl.textContent = `${list.length} 筆預約`;
+
+        if (list.length === 0) {
+            container.innerHTML = `<div class="empty-state">☕ 這天安安靜靜的<br><span style="font-size:0.8rem;color:#cfc2b6;">按 ＋ 新增預約</span></div>`;
+            return;
+        }
+
+        let html = '';
+        list.forEach((item) => {
+            const tags = item.services.map(s => {
+                if (s === '其他' && item.otherNote) {
+                    return `<span class="tag tag-other">📝 ${item.otherNote}</span>`;
+                }
+                return `<span class="tag">${s}</span>`;
+            }).join('');
+
+            html += `
+                <div class="booking-card">
+                    <div class="card-left">
+                        <span class="time-block">${item.time}</span>
+                        <div class="info-block">
+                            <div class="guest-name">${item.name}</div>
+                            <div class="service-tags">${tags}</div>
+                        </div>
+                    </div>
+                    <button class="delete-btn" data-date="${dateStr}" data-time="${item.time}" data-name="${item.name}">✕</button>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+
+        container.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                if (this.disabled) return;
+                this.disabled = true;
+                const date = this.dataset.date;
+                const time = this.dataset.time;
+                const name = this.dataset.name;
+                if (confirm(`確定刪除 ${name} 的預約嗎？`)) {
+                    await deleteFromCloud(date, time, name, false);
+                    const list = bookings[date] || [];
+                    const idx = list.findIndex(item => item.time === time && item.name === name);
+                    if (idx > -1) {
+                        list.splice(idx, 1);
+                        if (list.length === 0) delete bookings[date];
+                    }
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+                    renderCalendar();
+                    renderDailyList();
+                }
+                this.disabled = false;
+            });
+        });
+    }
+
+    // ============================================================
+    // 年月選擇器
+    // ============================================================
+    function openPicker() {
+        document.getElementById('pickerOverlay').classList.add('show');
+        renderYearGrid();
+        renderMonthGrid();
+        switchPickerTab('year');
+    }
+
+    function closePicker() {
+        document.getElementById('pickerOverlay').classList.remove('show');
+    }
+
+    function renderYearGrid() {
+        const year = currentViewDate.getFullYear();
+        const grid = document.getElementById('yearGrid');
+        let html = '';
+        for (let y = YEAR_START; y <= YEAR_END; y++) {
+            const active = y === year ? ' active' : '';
+            html += `<div class="picker-item${active}" data-year="${y}">${y}</div>`;
+        }
+        grid.innerHTML = html;
+        grid.querySelectorAll('.picker-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const y = parseInt(this.dataset.year);
+                currentViewDate.setFullYear(y);
+                selectedDate.setFullYear(y);
+                closePicker();
+                renderCalendar();
+                renderDailyList();
+            });
+        });
+    }
+
+    function renderMonthGrid() {
+        const month = currentViewDate.getMonth();
+        const grid = document.getElementById('monthGrid');
+        let html = '';
+        MONTHS.forEach((m, idx) => {
+            const active = idx === month ? ' active' : '';
+            html += `<div class="picker-item${active}" data-month="${idx}">${m}</div>`;
+        });
+        grid.innerHTML = html;
+        grid.querySelectorAll('.picker-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const m = parseInt(this.dataset.month);
+                currentViewDate.setMonth(m);
+                selectedDate.setMonth(m);
+                const maxDay = new Date(currentViewDate.getFullYear(), m + 1, 0).getDate();
+                if (selectedDate.getDate() > maxDay) selectedDate.setDate(maxDay);
+                closePicker();
+                renderCalendar();
+                renderDailyList();
+            });
+        });
+    }
+
+    function switchPickerTab(tab) {
+        document.querySelectorAll('.picker-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        document.getElementById('yearPickerBody').classList.toggle('active', tab === 'year');
+        document.getElementById('monthPickerBody').classList.toggle('active', tab === 'month');
+    }
+
+    // ============================================================
+    // 表單控制 (無休假開關)
+    // ============================================================
+    function resetForm() {
+        document.getElementById('inputName').value = '';
+        document.getElementById('otherNote').value = '';
+        document.getElementById('otherNoteRow').classList.remove('show');
+        selectedServices = [];
+        updateServiceButtons();
+        document.getElementById('formOverlay').classList.remove('active');
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('showFormBtn').disabled = false;
+        isSaving = false;
+    }
+
+    function updateServiceButtons() {
+        const picker = document.getElementById('servicePicker');
+        picker.innerHTML = '';
+        SERVICE_LIST.forEach(service => {
+            const btn = document.createElement('button');
+            btn.textContent = service;
+            btn.className = 'service-btn' + (selectedServices.includes(service) ? ' active' : '');
+            btn.dataset.service = service;
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const svc = this.dataset.service;
+                const idx = selectedServices.indexOf(svc);
+                if (idx > -1) selectedServices.splice(idx, 1);
+                else selectedServices.push(svc);
+                updateServiceButtons();
+                const otherRow = document.getElementById('otherNoteRow');
+                if (selectedServices.includes('其他')) {
+                    otherRow.classList.add('show');
+                } else {
+                    otherRow.classList.remove('show');
+                    document.getElementById('otherNote').value = '';
+                }
+            });
+            picker.appendChild(btn);
+        });
+    }
+
+    function prepareFormWithSelectedDate() {
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const day = selectedDate.getDate();
+        renderDateSelectors(year, month, day);
+        const now = new Date();
+        let h = now.getHours();
+        let m = Math.ceil(now.getMinutes() / 10) * 10;
+        if (m >= 60) { m = 0; h = (h + 1) % 24; }
+        renderTimeSelect(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+        document.getElementById('inputName').value = '';
+        selectedServices = [];
+        updateServiceButtons();
+        document.getElementById('otherNote').value = '';
+        document.getElementById('otherNoteRow').classList.remove('show');
+    }
+
+    // ============================================================
+    // 儲存 (僅預約)
+    // ============================================================
+    async function saveBooking() {
+        if (isSaving) return;
+        const saveBtn = document.getElementById('saveBtn');
+        const fabBtn = document.getElementById('showFormBtn');
+        isSaving = true;
+        saveBtn.disabled = true;
+        saveBtn.textContent = '⏳ 儲存中...';
+        fabBtn.disabled = true;
+
+        try {
+            const year = parseInt(document.getElementById('selectYear').value);
+            const month = parseInt(document.getElementById('selectMonth').value);
+            const day = parseInt(document.getElementById('selectDay').value);
+            const dateObj = new Date(year, month, day);
+            const dateStr = toDateStr(dateObj);
+
+            const name = document.getElementById('inputName').value.trim();
+            const time = document.getElementById('inputTime').value;
+
+            if (!name) { alert('請輸入客人姓名'); isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return; }
+            if (selectedServices.length === 0) { alert('請至少選擇一項服務'); isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return; }
+            if (!time) { alert('請選擇時間'); isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return; }
+
+            let otherNote = '';
+            if (selectedServices.includes('其他')) {
+                otherNote = document.getElementById('otherNote').value.trim();
+                if (!otherNote) { alert('請輸入「其他」服務的備註內容'); isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return; }
+            }
+
+            if (holidays[dateStr]) {
+                alert(`⚠️ ${dateStr} 為休假日，無法新增預約`);
+                isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return;
+            }
+
+            const existing = bookings[dateStr] || [];
+            const conflict = existing.some(item => item.time === time);
+            if (conflict) {
+                if (!confirm(`⏳ ${time} 已有預約，確定要重複新增嗎？`)) {
+                    isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return;
+                }
+            }
+
+            await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
+            if (!bookings[dateStr]) bookings[dateStr] = [];
+            bookings[dateStr].push({ time, name, services: [...selectedServices], otherNote });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+
+            resetForm();
+            renderCalendar();
+            renderDailyList();
+            alert(`✓ 已將 ${name} 的預約加入 ${dateStr} ${time}`);
+        } catch (error) {
+            console.error('儲存失敗', error);
+            alert('儲存失敗，請稍後再試');
+        } finally {
+            isSaving = false;
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✦ 儲存';
+            fabBtn.disabled = false;
+        }
+    }
+
+    // ============================================================
+    // 月份切換
+    // ============================================================
+    function changeMonth(delta) {
+        currentViewDate.setMonth(currentViewDate.getMonth() + delta);
+        if (selectedDate.getMonth() !== currentViewDate.getMonth() ||
+            selectedDate.getFullYear() !== currentViewDate.getFullYear()) {
+            selectedDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth(), 1);
+        }
+        renderCalendar();
+        renderDailyList();
+    }
+
+    // ============================================================
+    // 初始化
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadFromCloud();
+
+        let today = new Date();
+        if (today.getFullYear() < YEAR_START) today = new Date(YEAR_START, 0, 1);
+        else if (today.getFullYear() > YEAR_END) today = new Date(YEAR_END, 0, 1);
+
+        currentViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        renderTimeSelect('10:00');
+        updateServiceButtons();
+        renderDateSelectors(today.getFullYear(), today.getMonth(), today.getDate());
+
+        document.getElementById('selectYear').addEventListener('change', function() {
+            const year = parseInt(this.value);
+            const month = parseInt(document.getElementById('selectMonth').value);
+            const day = parseInt(document.getElementById('selectDay').value) || 1;
+            const maxDay = getDaysInMonth(year, month);
+            updateDays(year, month, day > maxDay ? maxDay : day);
+        });
+        document.getElementById('selectMonth').addEventListener('change', function() {
+            const year = parseInt(document.getElementById('selectYear').value);
+            const month = parseInt(this.value);
+            const day = parseInt(document.getElementById('selectDay').value) || 1;
+            const maxDay = getDaysInMonth(year, month);
+            updateDays(year, month, day > maxDay ? maxDay : day);
+        });
+
+        document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
+        document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
+        document.getElementById('monthLabel').addEventListener('click', openPicker);
+
+        document.querySelectorAll('.picker-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                switchPickerTab(this.dataset.tab);
+            });
+        });
+        document.getElementById('pickerCloseBtn').addEventListener('click', closePicker);
+        document.getElementById('pickerOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closePicker();
+        });
+
+        document.getElementById('showFormBtn').addEventListener('click', function() {
+            if (this.disabled) return;
+            prepareFormWithSelectedDate();
+            document.getElementById('formOverlay').classList.add('active');
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', resetForm);
+        document.getElementById('saveBtn').addEventListener('click', saveBooking);
+
+        document.getElementById('formOverlay').addEventListener('click', function(e) {
+            if (e.target === this) resetForm();
+        });
+
+        renderCalendar();
+        renderDailyList();
+    });
+</script>
+</body>
+</html>
