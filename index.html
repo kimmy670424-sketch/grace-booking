@@ -397,6 +397,23 @@
         .picker-body { display: none; }
         .picker-body.active { display: block; }
 
+        /* 同步按鈕 */
+        .sync-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: #ede8e2;
+            border: none;
+            border-radius: 40px;
+            color: #5b534a;
+            font-size: 0.9rem;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .sync-btn:active { background: #ddd3ca; transform: scale(0.97); }
+        .sync-btn:disabled { opacity: 0.5; pointer-events: none; }
+
         @media (max-width: 480px) {
             .app { padding: 16px 12px 18px; border-radius: 20px; }
             .shop-name { font-size: 1.4rem; }
@@ -430,6 +447,7 @@
             .picker-tab { font-size: 0.85rem; padding: 8px; min-height: 36px; }
             .picker-close-btn { font-size: 0.9rem; padding: 12px; min-height: 42px; }
             .days-grid { gap: 4px; }
+            .sync-btn { font-size: 0.8rem; padding: 8px; }
         }
         @media (min-width: 769px) {
             .day-cell { min-height: 100px; }
@@ -465,6 +483,7 @@
         <div id="dailyBookingList" class="timeline">
             <div class="empty-state">👆 點擊月曆上的日期查看預約</div>
         </div>
+        <button class="sync-btn" id="syncBtn">🔄 手動同步</button>
     </div>
 </div>
 
@@ -507,7 +526,7 @@
 
 <script>
     // ============================================================
-    // API 網址 (請確認這是您最新的網址)
+    // API 網址
     // ============================================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbz8tJzpEZ_V96UyI4vfkOSWxp2oXfRdtWsZK-Vn6T_6qIbMC04Ly99wbkVlO9FkgeaO/exec';
 
@@ -520,6 +539,8 @@
     let holidays = {};
     let selectedServices = [];
     let isSaving = false;
+    let isDeleting = false;
+    let isSyncing = false;
 
     const STORAGE_KEY = 'grace_booking_data';
     const HOLIDAY_KEY = 'grace_holiday_data';
@@ -529,7 +550,7 @@
     const YEAR_END = 2036;
 
     // ============================================================
-    // 格式化函數 - 專門處理您 API 回傳的 ISO 日期和時間
+    // 格式化函數
     // ============================================================
     function formatDateFromAPI(dateStr) {
         if (!dateStr) return '';
@@ -559,7 +580,7 @@
     }
 
     // ============================================================
-    // 雲端讀取
+    // 雲端讀取 (強制從雲端拉取最新)
     // ============================================================
     async function loadFromCloud() {
         try {
@@ -575,11 +596,10 @@
                 return false;
             }
             
-            // 重置資料
             bookings = {};
             holidays = {};
             
-            if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data)) {
                 data.forEach(item => {
                     const dateStr = formatDateFromAPI(item.date);
                     if (!dateStr) return;
@@ -628,15 +648,19 @@
                 formData.append(key, params[key] !== undefined ? params[key] : '');
             });
             
+            console.log(`📤 呼叫 API: ${action}`, params);
+            
             await fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
             });
+            
+            console.log(`✅ API ${action} 呼叫完成`);
             return true;
         } catch (error) {
-            console.error('❌ 雲端 API 呼叫失敗:', error);
+            console.error(`❌ API ${action} 呼叫失敗:`, error);
             return false;
         }
     }
@@ -659,6 +683,40 @@
             name: name || '',
             holiday: isHoliday ? 'true' : 'false'
         });
+    }
+
+    // ============================================================
+    // 強制同步
+    // ============================================================
+    async function forceSync() {
+        if (isSyncing) return;
+        isSyncing = true;
+        const syncBtn = document.getElementById('syncBtn');
+        const originalText = syncBtn.textContent;
+        syncBtn.textContent = '⏳ 同步中...';
+        syncBtn.disabled = true;
+        
+        try {
+            console.log('🔄 手動強制同步中...');
+            await loadFromCloud();
+            renderCalendar();
+            renderDailyList();
+            console.log('✅ 同步完成');
+            syncBtn.textContent = '✅ 已同步';
+            setTimeout(() => {
+                syncBtn.textContent = '🔄 手動同步';
+                syncBtn.disabled = false;
+                isSyncing = false;
+            }, 1500);
+        } catch (error) {
+            console.error('❌ 同步失敗:', error);
+            syncBtn.textContent = '❌ 同步失敗';
+            setTimeout(() => {
+                syncBtn.textContent = '🔄 手動同步';
+                syncBtn.disabled = false;
+                isSyncing = false;
+            }, 2000);
+        }
     }
 
     // ============================================================
@@ -928,7 +986,7 @@
         }
 
         let html = '';
-        list.forEach((item) => {
+        list.forEach((item, index) => {
             const tags = item.services.map(s => {
                 if (s === '其他' && item.otherNote) {
                     return `<span class="tag tag-other">📝 ${item.otherNote}</span>`;
@@ -937,7 +995,7 @@
             }).join('');
 
             html += `
-                <div class="booking-card">
+                <div class="booking-card" id="booking-${dateStr}-${index}">
                     <div class="card-left">
                         <span class="time-block">${item.time}</span>
                         <div class="info-block">
@@ -945,7 +1003,7 @@
                             <div class="service-tags">${tags}</div>
                         </div>
                     </div>
-                    <button class="delete-btn" data-date="${dateStr}" data-time="${item.time}" data-name="${item.name}">✕</button>
+                    <button class="delete-btn" data-date="${dateStr}" data-time="${item.time}" data-name="${item.name}" data-index="${index}">✕</button>
                 </div>
             `;
         });
@@ -954,26 +1012,47 @@
         container.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', async function(e) {
                 e.stopPropagation();
-                if (this.disabled) return;
-                this.disabled = true;
+                if (this.disabled || isDeleting) return;
                 
                 const date = this.dataset.date;
                 const time = this.dataset.time;
                 const name = this.dataset.name;
+                const index = parseInt(this.dataset.index);
                 
-                if (confirm(`確定刪除 ${name} 的預約嗎？`)) {
-                    const list = bookings[date] || [];
-                    const idx = list.findIndex(item => item.time === time && item.name === name);
-                    if (idx > -1) {
-                        list.splice(idx, 1);
-                        if (list.length === 0) delete bookings[date];
+                if (!confirm(`確定刪除 ${name} 的預約嗎？`)) return;
+                
+                isDeleting = true;
+                this.disabled = true;
+                this.innerHTML = '⏳';
+                
+                try {
+                    console.log(`🗑️ 刪除預約: ${date} ${time} ${name}`);
+                    const success = await deleteFromCloud(date, time, name, false);
+                    
+                    if (success) {
+                        const list = bookings[date] || [];
+                        const idx = list.findIndex(item => item.time === time && item.name === name);
+                        if (idx > -1) {
+                            list.splice(idx, 1);
+                            if (list.length === 0) delete bookings[date];
+                        }
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+                        renderCalendar();
+                        renderDailyList();
+                        console.log('✅ 刪除成功');
+                    } else {
+                        alert('❌ 雲端刪除失敗，請稍後再試');
+                        this.innerHTML = '✕';
+                        this.disabled = false;
                     }
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
-                    renderCalendar();
-                    renderDailyList();
-                    await deleteFromCloud(date, time, name, false);
+                } catch (error) {
+                    console.error('❌ 刪除過程發生錯誤:', error);
+                    alert('❌ 刪除失敗，請檢查網路後再試');
+                    this.innerHTML = '✕';
+                    this.disabled = false;
+                } finally {
+                    isDeleting = false;
                 }
-                this.disabled = false;
             });
         });
     }
@@ -1148,14 +1227,20 @@
                 }
             }
 
+            // 先上傳雲端
+            const success = await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
+            if (!success) {
+                alert('❌ 雲端儲存失敗，請稍後再試');
+                isSaving = false; saveBtn.disabled = false; saveBtn.textContent = '✦ 儲存'; fabBtn.disabled = false; return;
+            }
+
+            // 雲端成功後才更新本地
             if (!bookings[dateStr]) bookings[dateStr] = [];
             bookings[dateStr].push({ time, name, services: [...selectedServices], otherNote });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+            
             renderCalendar();
             renderDailyList();
-
-            await saveToCloud(dateStr, time, name, selectedServices, otherNote, false);
-
             resetForm();
             alert(`✓ 已將 ${name} 的預約加入 ${dateStr} ${time}`);
         } catch (error) {
@@ -1242,24 +1327,37 @@
             if (e.target === this) resetForm();
         });
 
+        // 手動同步按鈕
+        document.getElementById('syncBtn').addEventListener('click', forceSync);
+
         renderCalendar();
         renderDailyList();
 
-        // 自動同步 (每15秒)
+        // 每 10 秒自動同步 (更頻繁)
         setInterval(async function() {
+            console.log('🔄 自動同步中...');
             await loadFromCloud();
             renderCalendar();
             renderDailyList();
-        }, 15000);
+        }, 10000);
 
         // 頁面重新可見時同步
         document.addEventListener('visibilitychange', async function() {
             if (!document.hidden) {
+                console.log('🔄 頁面重新可見，同步中...');
                 await loadFromCloud();
                 renderCalendar();
                 renderDailyList();
             }
         });
+
+        // 頁面載入完成後 3 秒再同步一次
+        setTimeout(async function() {
+            console.log('🔄 延遲同步中...');
+            await loadFromCloud();
+            renderCalendar();
+            renderDailyList();
+        }, 3000);
     });
 </script>
 </body>
