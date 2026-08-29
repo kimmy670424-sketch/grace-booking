@@ -687,9 +687,8 @@
         </div>
     </div>
     <div class="view-switch" id="viewSwitch">
-        <button id="guestViewBtn" class="active">🌿 休假</button>
-        <button id="ownerViewBtn">📋 預約</button>
-        <div class="mode-note" id="modeNote">休假模式只顯示休假日期</div>
+        <button id="screenshotModeBtn">🌿 休假</button>
+        <button id="ownerViewBtn" class="active">📅 預約</button>
     </div>
     <button class="fab" id="showFormBtn">＋</button>
     <div class="calendar">
@@ -708,6 +707,8 @@
         <button class="sync-btn" id="syncBtn">🔄 手動同步</button>
     </div>
 </div>
+
+<button class="exit-screenshot-btn" id="exitScreenshotBtn">✕ 回到預約</button>
 
 <div class="picker-overlay" id="pickerOverlay">
     <div class="picker-modal">
@@ -766,9 +767,6 @@
     let viewMode = 'guest';
     let holidaySyncLockUntil = 0;
     const holidayBusyDates = new Set();
-
-    // 預約模式密碼：請自行改成只有你知道的 4~8 位數
-    const OWNER_PIN = '8888';
 
     const STORAGE_KEY = 'grace_booking_data';
     const HOLIDAY_KEY = 'grace_holiday_data';
@@ -1064,29 +1062,19 @@
         document.body.classList.toggle('owner-mode', viewMode === 'owner');
         document.body.classList.toggle('guest-mode', viewMode === 'guest');
 
-        const guestBtn = document.getElementById('guestViewBtn');
         const ownerBtn = document.getElementById('ownerViewBtn');
-        const note = document.getElementById('modeNote');
-        if (guestBtn) guestBtn.classList.toggle('active', viewMode === 'guest');
+        const screenshotBtn = document.getElementById('screenshotModeBtn');
+
         if (ownerBtn) ownerBtn.classList.toggle('active', viewMode === 'owner');
-        if (note) {
-            note.textContent = viewMode === 'owner'
-                ? '店家版：可看全部預約，雙擊日期可設定／取消休假'
-                : '休假模式只顯示休假日期';
-        }
+        if (screenshotBtn) screenshotBtn.classList.toggle('active', viewMode === 'guest');
 
         renderCalendar();
         renderDailyList();
     }
 
     function enterOwnerMode() {
-        sessionStorage.setItem('grace_owner_mode', '1');
+        document.body.classList.remove('screenshot-mode');
         setViewMode('owner');
-    }
-
-    function enterGuestMode() {
-        sessionStorage.removeItem('grace_owner_mode');
-        setViewMode('guest');
     }
 
     // ============================================================
@@ -1189,7 +1177,7 @@
         renderCalendar();
         renderDailyList();
 
-        // 休假模式永遠不能切換休假
+        // 客人版永遠不能切換休假
         if (viewMode !== 'owner') {
             lastTapTime = now;
             lastTapDate = dateStr;
@@ -1208,51 +1196,54 @@
     }
 
     async function toggleHolidayByDoubleClick(dateObj) {
-        const dateStr = toDateStr(dateObj);
+        const dateStr = formatDateLocal(dateObj);
 
-        // 防止連點造成同一日期連續送出相反請求
+        // 同一天正在處理時，後續狂點全部忽略，避免休→未休→休
         if (holidayBusyDates.has(dateStr)) return;
-        holidayBusyDates.add(dateStr);
 
-        const isHolidayNow = isHoliday(dateStr);
-        const hasBooking = bookings[dateStr] && bookings[dateStr].length > 0;
+        const dayBookings = bookings[dateStr] || [];
+        const currentlyHoliday = !!holidays[dateStr];
 
-        if (!isHolidayNow && hasBooking) {
-            holidayBusyDates.delete(dateStr);
-            alert(`⚠️ ${dateStr} 已有預約，無法設為休假`);
+        if (!currentlyHoliday && dayBookings.length > 0) {
+            alert('此日期已有預約，請先刪除當日預約後再設定休假');
             return;
         }
 
-        // 先立即更新畫面，但暫停雲端自動覆蓋，避免「休→未休→休」閃爍
-        if (isHolidayNow) delete holidays[dateStr];
-        else holidays[dateStr] = true;
-        localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
-        holidaySyncLockUntil = Date.now() + 2500;
+        holidayBusyDates.add(dateStr);
+
+        // 鎖住雲端同步較久，避免舊資料蓋回剛剛的操作
+        holidaySyncLockUntil = Date.now() + 5000;
+
+        // 先立即更新畫面，只更新一次
+        if (currentlyHoliday) {
+            delete holidays[dateStr];
+        } else {
+            holidays[dateStr] = true;
+        }
+        saveHolidays();
         renderCalendar();
         renderDailyList();
 
         try {
-            await saveToCloud(dateStr, '', '休假', [], '', !isHolidayNow);
-
-            // 給 Apps Script / 試算表一點時間完成寫入，再只同步一次
-            setTimeout(async () => {
-                try {
-                    await loadFromCloud();
-                    renderCalendar();
-                    renderDailyList();
-                } finally {
-                    holidayBusyDates.delete(dateStr);
-                }
-            }, 1800);
+            await saveHolidayToCloud(dateStr, !currentlyHoliday);
         } catch (error) {
-            console.error('休假同步失敗:', error);
-            if (isHolidayNow) holidays[dateStr] = true;
-            else delete holidays[dateStr];
-            localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
-            holidayBusyDates.delete(dateStr);
+            console.error('休假同步失敗：', error);
+            // 寫入失敗才還原
+            if (currentlyHoliday) {
+                holidays[dateStr] = true;
+            } else {
+                delete holidays[dateStr];
+            }
+            saveHolidays();
             renderCalendar();
             renderDailyList();
-            alert('休假同步失敗，已復原');
+            alert('休假同步失敗，請稍後再試');
+        } finally {
+            // 不立刻重新抓雲端，避免 Apps Script 尚未更新完成造成畫面反跳。
+            // 3 秒內同一天的點擊都忽略；下一輪正常自動同步再確認。
+            setTimeout(function() {
+                holidayBusyDates.delete(dateStr);
+            }, 3000);
         }
     }
 
@@ -1352,7 +1343,7 @@
                 container.innerHTML = `<div class="holiday-only-state">🛑 <strong>這天休假</strong><br>請避開此日期安排預約</div>`;
             } else {
                 countEl.textContent = '營業日';
-                container.innerHTML = `<div class="holiday-only-state">🌿 此日目前沒有標示休假<br><span style="font-size:0.82rem;color:#aa9a8c;">休假模式不顯示任何預約資料</span></div>`;
+                container.innerHTML = `<div class="holiday-only-state">🌿 此日目前沒有標示休假<br><span style="font-size:0.82rem;color:#aa9a8c;">客人版不顯示任何預約資料</span></div>`;
             }
             return;
         }
@@ -1664,8 +1655,40 @@
     // 初始化
     // ============================================================
 
+    // ============================================================
+    // 📷 客人截圖模式
+    // ============================================================
+    let modeBeforeScreenshot = 'owner';
+
+    function enterScreenshotMode() {
+        modeBeforeScreenshot = 'owner';
+
+        // 截圖一律用客人視圖渲染，確保完全不顯示預約內容
+        viewMode = 'guest';
+        document.body.classList.remove('owner-mode');
+        document.body.classList.add('guest-mode');
+        document.body.classList.add('screenshot-mode');
+
+        renderCalendar();
+        renderDailyList();
+
+        // 回到頁面頂端，方便直接截完整月曆
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function exitScreenshotMode() {
+        document.body.classList.remove('screenshot-mode');
+
+        // 離開休假截圖後直接回到「預約」
+        setViewMode('owner');
+    }
+
     document.addEventListener('DOMContentLoaded', async function() {
 
+        const screenshotModeBtn = document.getElementById('screenshotModeBtn');
+        const exitScreenshotBtn = document.getElementById('exitScreenshotBtn');
+        if (screenshotModeBtn) screenshotModeBtn.addEventListener('click', enterScreenshotMode);
+        if (exitScreenshotBtn) exitScreenshotBtn.addEventListener('click', exitScreenshotMode);
 
 
         console.log('🚀 恩典髮屋預約系統啟動中...');
@@ -1716,7 +1739,6 @@
             if (e.target === this) closePicker();
         });
 
-        document.getElementById('guestViewBtn').addEventListener('click', enterGuestMode);
         document.getElementById('ownerViewBtn').addEventListener('click', enterOwnerMode);
 
         document.getElementById('showFormBtn').addEventListener('click', function() {
@@ -1735,8 +1757,8 @@
 
         document.getElementById('syncBtn').addEventListener('click', forceSync);
 
-        // 預設休假模式；同一個分頁已登入店家則保留預約模式
-        setViewMode(sessionStorage.getItem('grace_owner_mode') === '1' ? 'owner' : 'guest');
+        // 預設進入「預約」模式，不需要密碼
+        setViewMode('owner');
 
         // 渲染月曆
         renderCalendar();
