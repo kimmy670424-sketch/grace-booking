@@ -528,6 +528,148 @@
         }
     }
 
+
+
+    /* ===== 檢視模式 / 農曆 / 節日 ===== */
+    .view-switch {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0 12px;
+        flex-wrap: wrap;
+    }
+    .view-switch button {
+        flex: 1 1 150px;
+        border: 1.5px solid #ded4ca;
+        background: #fffaf5;
+        color: #6b5e52;
+        border-radius: 999px;
+        padding: 9px 12px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .view-switch button.active {
+        background: #6f6257;
+        color: white;
+        border-color: #6f6257;
+    }
+    .mode-note {
+        width: 100%;
+        text-align: center;
+        font-size: 0.72rem;
+        color: #a09184;
+        margin-top: -2px;
+    }
+    .lunar-line {
+        font-size: 0.58rem;
+        line-height: 1.15;
+        color: #9a8b7d;
+        margin-top: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .festival-line {
+        font-size: 0.56rem;
+        line-height: 1.15;
+        color: #b05f5f;
+        font-weight: 700;
+        margin-top: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .day-cell.selected .lunar-line,
+    .day-cell.selected .festival-line { color: #f0e8e1; }
+    .holiday-only-state {
+        text-align: center;
+        padding: 18px 12px;
+        border-radius: 16px;
+        background: #fbf8f4;
+        border: 1.5px dashed #e4d8cc;
+        color: #7d6e60;
+        line-height: 1.7;
+    }
+    .owner-only { display: none; }
+    body.owner-mode .owner-only { display: initial; }
+    body.guest-mode .fab { display: none !important; }
+    body.guest-mode .sync-btn { display: none !important; }
+    @media (max-width: 600px) {
+        .view-switch { gap: 6px; }
+        .view-switch button { font-size: 0.78rem; padding: 8px 8px; }
+        .lunar-line { font-size: 0.52rem; }
+        .festival-line { font-size: 0.50rem; }
+        .day-cell { overflow: hidden; }
+    }
+
+
+    /* ============================================================
+       客人截圖模式
+       ============================================================ */
+    #screenshotModeBtn {
+        flex: 1 1 120px;
+    }
+    body.screenshot-mode .view-switch,
+    body.screenshot-mode .daily-section,
+    body.screenshot-mode .fab,
+    body.screenshot-mode .sync-btn {
+        display: none !important;
+    }
+    body.screenshot-mode .app {
+        padding-bottom: 12px;
+    }
+    body.screenshot-mode .divider {
+        display: none !important;
+    }
+    body.screenshot-mode .calendar {
+        margin-bottom: 0;
+    }
+    body.screenshot-mode .shop-header {
+        margin-bottom: 8px;
+    }
+    /* 截圖模式只呈現休假，不顯示任何預約小卡 */
+    body.screenshot-mode .mini-booking,
+    body.screenshot-mode .more-indicator {
+        display: none !important;
+    }
+    /* 截圖時仍保留月份切換，方便先選月份再截圖 */
+    body.screenshot-mode .nav-btn {
+        visibility: visible;
+    }
+    /* 右下角離開截圖模式按鈕 */
+    .exit-screenshot-btn {
+        display: none;
+        position: fixed;
+        right: 14px;
+        bottom: 14px;
+        z-index: 9999;
+        border: none;
+        border-radius: 999px;
+        padding: 9px 14px;
+        background: rgba(79,69,59,.88);
+        color: white;
+        font-size: .78rem;
+        font-weight: 700;
+        box-shadow: 0 4px 16px rgba(0,0,0,.18);
+        cursor: pointer;
+    }
+    body.screenshot-mode .exit-screenshot-btn {
+        display: block;
+    }
+    @media (max-width: 600px) {
+        body.screenshot-mode .app {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+        }
+        .exit-screenshot-btn {
+            right: 10px;
+            bottom: 10px;
+            padding: 8px 12px;
+            font-size: .72rem;
+        }
+    }
+
 </style>
 </head>
 <body>
@@ -543,6 +685,12 @@
             </span>
             <button class="nav-btn" id="nextMonth">〉</button>
         </div>
+    </div>
+    <div class="view-switch" id="viewSwitch">
+        <button id="guestViewBtn" class="active">🌿 客人版｜只看休假</button>
+        <button id="ownerViewBtn">🔐 店家版｜休假＋預約</button>
+        <button id="screenshotModeBtn">📷 客人截圖</button>
+        <div class="mode-note" id="modeNote">客人版不顯示任何預約姓名、時間或服務</div>
     </div>
     <button class="fab" id="showFormBtn">＋</button>
     <div class="calendar">
@@ -561,6 +709,8 @@
         <button class="sync-btn" id="syncBtn">🔄 手動同步</button>
     </div>
 </div>
+
+<button class="exit-screenshot-btn" id="exitScreenshotBtn">✕ 離開截圖模式</button>
 
 <div class="picker-overlay" id="pickerOverlay">
     <div class="picker-modal">
@@ -616,10 +766,16 @@
     let isSaving = false;
     let isDeleting = false;
     let isSyncing = false;
+    let viewMode = 'guest';
+    let holidaySyncLockUntil = 0;
+    const holidayBusyDates = new Set();
+
+    // 店家模式密碼：請自行改成只有你知道的 4~8 位數
+    const OWNER_PIN = '8888';
 
     const STORAGE_KEY = 'grace_booking_data';
     const HOLIDAY_KEY = 'grace_holiday_data';
-    const SERVICE_LIST = ['洗', '剪', '燙', '染', '其他'];
+    const SERVICE_LIST = ['洗', '剪', '單剪', '燙', '染', '漂', '頭皮護理', '其他'];
     const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
     const YEAR_START = 2026;
     const YEAR_END = 2036;
@@ -904,142 +1060,210 @@
     }
 
     // ============================================================
+    // 客人 / 店家檢視模式
+    // ============================================================
+    function setViewMode(mode) {
+        viewMode = mode === 'owner' ? 'owner' : 'guest';
+        document.body.classList.toggle('owner-mode', viewMode === 'owner');
+        document.body.classList.toggle('guest-mode', viewMode === 'guest');
+
+        const guestBtn = document.getElementById('guestViewBtn');
+        const ownerBtn = document.getElementById('ownerViewBtn');
+        const note = document.getElementById('modeNote');
+        if (guestBtn) guestBtn.classList.toggle('active', viewMode === 'guest');
+        if (ownerBtn) ownerBtn.classList.toggle('active', viewMode === 'owner');
+        if (note) {
+            note.textContent = viewMode === 'owner'
+                ? '店家版：可看全部預約，雙擊日期可設定／取消休假'
+                : '客人版不顯示任何預約姓名、時間或服務';
+        }
+
+        renderCalendar();
+        renderDailyList();
+    }
+
+    function enterOwnerMode() {
+        if (viewMode === 'owner') return;
+        const pin = prompt('請輸入店家模式密碼');
+        if (pin === null) return;
+        if (pin !== OWNER_PIN) {
+            alert('密碼錯誤');
+            return;
+        }
+        sessionStorage.setItem('grace_owner_mode', '1');
+        setViewMode('owner');
+    }
+
+    function enterGuestMode() {
+        sessionStorage.removeItem('grace_owner_mode');
+        setViewMode('guest');
+    }
+
+    // ============================================================
+    // 農曆與節日
+    // ============================================================
+    const LUNAR_DAY_NAMES = [
+        '', '初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+        '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+        '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'
+    ];
+    const LUNAR_MONTH_NAMES = ['', '正月','二月','三月','四月','五月','六月','七月','八月','九月','十月','冬月','臘月'];
+
+    function getLunarParts(dateObj) {
+        try {
+            const fmt = new Intl.DateTimeFormat('zh-TW-u-ca-chinese-nu-latn', {
+                month: 'numeric', day: 'numeric'
+            });
+            const parts = fmt.formatToParts(dateObj);
+            let monthText = parts.find(p => p.type === 'month')?.value || '';
+            let dayText = parts.find(p => p.type === 'day')?.value || '';
+            const leap = /閏/.test(monthText);
+            const month = parseInt(monthText.replace(/\D/g, ''), 10);
+            const day = parseInt(dayText.replace(/\D/g, ''), 10);
+            if (!Number.isNaN(month) && !Number.isNaN(day)) {
+                return { month, day, leap };
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function getLunarText(dateObj) {
+        const lunar = getLunarParts(dateObj);
+        if (!lunar) return '';
+        const monthName = (lunar.leap ? '閏' : '') + (LUNAR_MONTH_NAMES[lunar.month] || `${lunar.month}月`);
+        if (lunar.day === 1) return monthName;
+        return LUNAR_DAY_NAMES[lunar.day] || `${lunar.day}`;
+    }
+
+    function getQingmingDay(year) {
+        // 2000~2099 通用近似公式
+        const y = year % 100;
+        return Math.floor(y * 0.2422 + 4.81) - Math.floor(y / 4);
+    }
+
+    function getFestival(dateObj) {
+        const m = dateObj.getMonth() + 1;
+        const d = dateObj.getDate();
+        const y = dateObj.getFullYear();
+        const fixed = {
+            '1-1': '元旦',
+            '2-14': '情人節',
+            '2-28': '和平紀念日',
+            '4-4': '兒童節',
+            '5-1': '勞動節',
+            '8-8': '父親節',
+            '9-28': '教師節',
+            '10-10': '國慶日',
+            '10-25': '光復節',
+            '12-25': '行憲紀念日'
+        };
+        let festival = fixed[`${m}-${d}`] || '';
+        if (m === 4 && d === getQingmingDay(y)) festival = '清明節';
+
+        // 母親節：五月第二個星期日
+        if (m === 5 && dateObj.getDay() === 0 && d >= 8 && d <= 14) festival = '母親節';
+
+        const lunar = getLunarParts(dateObj);
+        if (lunar && !lunar.leap) {
+            const key = `${lunar.month}-${lunar.day}`;
+            const lunarFestivals = {
+                '1-1': '春節',
+                '1-15': '元宵節',
+                '5-5': '端午節',
+                '7-7': '七夕',
+                '7-15': '中元節',
+                '8-15': '中秋節',
+                '9-9': '重陽節'
+            };
+            if (lunarFestivals[key]) festival = lunarFestivals[key];
+        }
+        return festival;
+    }
+
+    // ============================================================
     // 雙擊切換休假
     // ============================================================
     let lastTapTime = 0;
     let lastTapDate = '';
-    let tapTimeout = null;
 
     function handleDayTap(el) {
         const y = parseInt(el.dataset.year);
         const m = parseInt(el.dataset.month);
         const d = parseInt(el.dataset.day);
-
         const dateObj = new Date(y, m, d);
         const dateStr = toDateStr(dateObj);
-
         const now = Date.now();
-        const timeSince = now - lastTapTime;
 
-        // 必須在 400ms 內，而且兩次點的是同一天，才算雙擊
-        const isDoubleTap =
-            timeSince > 0 &&
-            timeSince < 400 &&
-            lastTapDate === dateStr;
+        // 單擊立刻選日期，不再等待 400ms
+        selectedDate = dateObj;
+        renderCalendar();
+        renderDailyList();
 
-        if (isDoubleTap) {
-            if (tapTimeout) {
-                clearTimeout(tapTimeout);
-                tapTimeout = null;
-            }
-
-            lastTapTime = 0;
-            lastTapDate = '';
-
-            toggleHolidayByDoubleClick(dateObj);
+        // 客人版永遠不能切換休假
+        if (viewMode !== 'owner') {
+            lastTapTime = now;
+            lastTapDate = dateStr;
             return;
         }
 
+        const isDoubleTap = lastTapDate === dateStr && (now - lastTapTime) > 0 && (now - lastTapTime) < 360;
         lastTapTime = now;
         lastTapDate = dateStr;
 
-        if (tapTimeout) {
-            clearTimeout(tapTimeout);
+        if (isDoubleTap) {
+            lastTapTime = 0;
+            lastTapDate = '';
+            toggleHolidayByDoubleClick(dateObj);
         }
-
-        tapTimeout = setTimeout(() => {
-            selectedDate = new Date(y, m, d);
-            renderCalendar();
-            renderDailyList();
-
-            tapTimeout = null;
-
-            if (Date.now() - lastTapTime >= 400) {
-                lastTapTime = 0;
-                lastTapDate = '';
-            }
-        }, 400);
     }
 
     async function toggleHolidayByDoubleClick(dateObj) {
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const d = String(dateObj.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`;
+        const dateStr = toDateStr(dateObj);
 
-        console.log('🖱️ 切換休假日期:', dateStr);
+        // 防止連點造成同一日期連續送出相反請求
+        if (holidayBusyDates.has(dateStr)) return;
+        holidayBusyDates.add(dateStr);
 
         const isHolidayNow = isHoliday(dateStr);
         const hasBooking = bookings[dateStr] && bookings[dateStr].length > 0;
 
         if (!isHolidayNow && hasBooking) {
+            holidayBusyDates.delete(dateStr);
             alert(`⚠️ ${dateStr} 已有預約，無法設為休假`);
             return;
         }
 
-        if (isHolidayNow) {
-            // 取消休假
-            delete holidays[dateStr];
-            localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
-            renderCalendar();
-            renderDailyList();
-
-            const success = await saveToCloud(
-                dateStr,
-                '',
-                '休假',
-                [],
-                '',
-                false
-            );
-
-            if (!success) {
-                holidays[dateStr] = true;
-                localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
-                renderCalendar();
-                renderDailyList();
-                alert('取消休假同步失敗，請再試一次');
-                return;
-            }
-
-            setTimeout(async () => {
-                await loadFromCloud();
-                renderCalendar();
-                renderDailyList();
-            }, 500);
-
-            return;
-        }
-
-        // 設定休假
-        holidays[dateStr] = true;
+        // 先立即更新畫面，但暫停雲端自動覆蓋，避免「休→未休→休」閃爍
+        if (isHolidayNow) delete holidays[dateStr];
+        else holidays[dateStr] = true;
         localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+        holidaySyncLockUntil = Date.now() + 2500;
         renderCalendar();
         renderDailyList();
 
-        const success = await saveToCloud(
-            dateStr,
-            '',
-            '休假',
-            [],
-            '',
-            true
-        );
+        try {
+            await saveToCloud(dateStr, '', '休假', [], '', !isHolidayNow);
 
-        if (!success) {
-            delete holidays[dateStr];
+            // 給 Apps Script / 試算表一點時間完成寫入，再只同步一次
+            setTimeout(async () => {
+                try {
+                    await loadFromCloud();
+                    renderCalendar();
+                    renderDailyList();
+                } finally {
+                    holidayBusyDates.delete(dateStr);
+                }
+            }, 1800);
+        } catch (error) {
+            console.error('休假同步失敗:', error);
+            if (isHolidayNow) holidays[dateStr] = true;
+            else delete holidays[dateStr];
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
+            holidayBusyDates.delete(dateStr);
             renderCalendar();
             renderDailyList();
-            alert('設定休假同步失敗，請再試一次');
-            return;
+            alert('休假同步失敗，已復原');
         }
-
-        setTimeout(async () => {
-            await loadFromCloud();
-            renderCalendar();
-            renderDailyList();
-        }, 500);
     }
 
     // ============================================================
@@ -1055,7 +1279,6 @@
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const today = new Date();
-
         const grid = document.getElementById('daysGrid');
         let html = '';
 
@@ -1070,49 +1293,44 @@
             const isToday = isSameDay(dateObj, today);
             const isSelected = isSameDay(dateObj, selectedDate);
             const isHolidayFlag = isHoliday(dateStr);
+            const lunarText = getLunarText(dateObj);
+            const festival = getFestival(dateObj);
 
             let classes = 'day-cell';
             if (isToday) classes += ' today';
             if (isSelected) classes += ' selected';
             if (isHolidayFlag) classes += ' holiday';
 
-            const displayItems = list.slice(0, 3);
-            const remaining = list.length - 3;
-
             let bookingsHtml = '';
             if (isHolidayFlag) {
                 bookingsHtml = `<div class="holiday-badge">🛑 休</div>`;
-            } else if (list.length > 0) {
+            } else if (viewMode === 'owner' && list.length > 0) {
+                const displayItems = list.slice(0, 3);
+                const remaining = list.length - 3;
                 displayItems.forEach(item => {
                     let serviceText = item.services.join('');
-                    if (serviceText.includes('其他') && item.otherNote) {
-                        serviceText = '其他';
-                    }
+                    if (serviceText.includes('其他') && item.otherNote) serviceText = '其他';
                     bookingsHtml += `
                         <div class="mini-booking">
                             <span class="mini-time">${item.time}</span>
                             <span class="mini-name">${item.name}</span>
                             ${serviceText ? `<span class="mini-service">${serviceText}</span>` : ''}
-                        </div>
-                    `;
+                        </div>`;
                 });
-                if (remaining > 0) {
-                    bookingsHtml += `<div class="more-indicator">+ ${remaining} 筆</div>`;
-                }
+                if (remaining > 0) bookingsHtml += `<div class="more-indicator">+ ${remaining} 筆</div>`;
             }
 
             html += `
                 <div class="${classes}" data-year="${year}" data-month="${month}" data-day="${d}">
                     <div class="day-number">${d}</div>
+                    ${festival ? `<div class="festival-line">${festival}</div>` : ''}
+                    ${lunarText ? `<div class="lunar-line">${lunarText}</div>` : ''}
                     <div class="day-bookings">${bookingsHtml}</div>
-                </div>
-            `;
+                </div>`;
         }
 
         grid.innerHTML = html;
-
         grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
-            // 手機與電腦統一只用 click，避免 touchend + click 被算成兩次
             el.onclick = function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1134,16 +1352,28 @@
 
         const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         const wd = weekdays[selectedDate.getDay()];
-        label.textContent = `📅 ${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 週${wd}`;
-        
+        const lunarText = getLunarText(selectedDate);
+        const festival = getFestival(selectedDate);
+        label.textContent = `📅 ${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 週${wd}${lunarText ? `｜農曆 ${lunarText}` : ''}${festival ? `｜${festival}` : ''}`;
+
+        if (viewMode === 'guest') {
+            if (isHolidayFlag) {
+                countEl.textContent = '🛑 休假';
+                container.innerHTML = `<div class="holiday-only-state">🛑 <strong>這天休假</strong><br>請避開此日期安排預約</div>`;
+            } else {
+                countEl.textContent = '營業日';
+                container.innerHTML = `<div class="holiday-only-state">🌿 此日目前沒有標示休假<br><span style="font-size:0.82rem;color:#aa9a8c;">客人版不顯示任何預約資料</span></div>`;
+            }
+            return;
+        }
+
         if (isHolidayFlag) {
             countEl.textContent = '🛑 休假';
-            container.innerHTML = `<div class="empty-state" style="border-color:#d32f2f; color:#d32f2f; background:#ffebee;">📌 今日為公休日 (點兩下日期可取消)</div>`;
+            container.innerHTML = `<div class="empty-state" style="border-color:#d32f2f;color:#d32f2f;background:#ffebee;">📌 今日為公休日（雙擊日期可取消）</div>`;
             return;
         }
 
         countEl.textContent = `${list.length} 筆預約`;
-
         if (list.length === 0) {
             container.innerHTML = `<div class="empty-state">☕ 這天安安靜靜的<br><span style="font-size:0.8rem;color:#cfc2b6;">按 ＋ 新增預約</span></div>`;
             return;
@@ -1152,9 +1382,7 @@
         let html = '';
         list.forEach((item, index) => {
             const tags = item.services.map(s => {
-                if (s === '其他' && item.otherNote) {
-                    return `<span class="tag tag-other">📝 ${item.otherNote}</span>`;
-                }
+                if (s === '其他' && item.otherNote) return `<span class="tag tag-other">📝 ${item.otherNote}</span>`;
                 return `<span class="tag">${s}</span>`;
             }).join('');
 
@@ -1167,9 +1395,8 @@
                             <div class="service-tags">${tags}</div>
                         </div>
                     </div>
-                    <button class="delete-btn" data-date="${dateStr}" data-time="${item.time}" data-name="${item.name}" data-index="${index}">✕</button>
-                </div>
-            `;
+                    <button class="delete-btn" data-date="${dateStr}" data-time="${item.time}" data-name="${item.name}">✕</button>
+                </div>`;
         });
         container.innerHTML = html;
 
@@ -1177,39 +1404,25 @@
             btn.addEventListener('click', async function(e) {
                 e.stopPropagation();
                 if (this.disabled || isDeleting) return;
-                
                 const date = this.dataset.date;
                 const time = this.dataset.time;
                 const name = this.dataset.name;
-                
                 if (!confirm(`確定刪除 ${name} 的預約嗎？`)) return;
-                
+
                 isDeleting = true;
                 this.disabled = true;
                 this.innerHTML = '⏳';
-                
                 try {
                     const success = await deleteFromCloud(date, time, name, false);
                     if (success) {
-                        const list = bookings[date] || [];
-                        const idx = list.findIndex(item => item.time === time && item.name === name);
-                        if (idx > -1) {
-                            list.splice(idx, 1);
-                            if (list.length === 0) delete bookings[date];
-                        }
+                        const dayList = bookings[date] || [];
+                        const idx = dayList.findIndex(item => item.time === time && item.name === name);
+                        if (idx > -1) dayList.splice(idx, 1);
+                        if (dayList.length === 0) delete bookings[date];
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
                         renderCalendar();
                         renderDailyList();
-                    } else {
-                        alert('❌ 雲端刪除失敗，請稍後再試');
-                        this.innerHTML = '✕';
-                        this.disabled = false;
                     }
-                } catch (error) {
-                    console.error('❌ 刪除失敗:', error);
-                    alert('❌ 刪除失敗，請檢查網路');
-                    this.innerHTML = '✕';
-                    this.disabled = false;
                 } finally {
                     isDeleting = false;
                 }
@@ -1460,7 +1673,53 @@
     // ============================================================
     // 初始化
     // ============================================================
+
+    // ============================================================
+    // 📷 客人截圖模式
+    // ============================================================
+    let modeBeforeScreenshot = 'guest';
+
+    function enterScreenshotMode() {
+        modeBeforeScreenshot = viewMode;
+
+        // 截圖一律用客人視圖渲染，確保完全不顯示預約內容
+        viewMode = 'guest';
+        document.body.classList.remove('owner-mode');
+        document.body.classList.add('guest-mode');
+        document.body.classList.add('screenshot-mode');
+
+        renderCalendar();
+        renderDailyList();
+
+        // 回到頁面頂端，方便直接截完整月曆
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function exitScreenshotMode() {
+        document.body.classList.remove('screenshot-mode');
+
+        // 回復進入截圖前的模式
+        viewMode = modeBeforeScreenshot === 'owner' ? 'owner' : 'guest';
+        document.body.classList.toggle('owner-mode', viewMode === 'owner');
+        document.body.classList.toggle('guest-mode', viewMode === 'guest');
+
+        const guestBtn = document.getElementById('guestViewBtn');
+        const ownerBtn = document.getElementById('ownerViewBtn');
+        if (guestBtn) guestBtn.classList.toggle('active', viewMode === 'guest');
+        if (ownerBtn) ownerBtn.classList.toggle('active', viewMode === 'owner');
+
+        renderCalendar();
+        renderDailyList();
+    }
+
     document.addEventListener('DOMContentLoaded', async function() {
+
+        const screenshotModeBtn = document.getElementById('screenshotModeBtn');
+        const exitScreenshotBtn = document.getElementById('exitScreenshotBtn');
+        if (screenshotModeBtn) screenshotModeBtn.addEventListener('click', enterScreenshotMode);
+        if (exitScreenshotBtn) exitScreenshotBtn.addEventListener('click', exitScreenshotMode);
+
+
         console.log('🚀 恩典髮屋預約系統啟動中...');
         
         // 載入雲端資料
@@ -1509,7 +1768,11 @@
             if (e.target === this) closePicker();
         });
 
+        document.getElementById('guestViewBtn').addEventListener('click', enterGuestMode);
+        document.getElementById('ownerViewBtn').addEventListener('click', enterOwnerMode);
+
         document.getElementById('showFormBtn').addEventListener('click', function() {
+            if (viewMode !== 'owner') return;
             if (this.disabled) return;
             prepareFormWithSelectedDate();
             document.getElementById('formOverlay').classList.add('active');
@@ -1524,12 +1787,16 @@
 
         document.getElementById('syncBtn').addEventListener('click', forceSync);
 
+        // 預設客人版；同一個分頁已登入店家則保留店家模式
+        setViewMode(sessionStorage.getItem('grace_owner_mode') === '1' ? 'owner' : 'guest');
+
         // 渲染月曆
         renderCalendar();
         renderDailyList();
 
         // 每 10 秒自動同步
         setInterval(async function() {
+            if (Date.now() < holidaySyncLockUntil || holidayBusyDates.size > 0) return;
             console.log('🔄 自動同步中...');
             await loadFromCloud();
             renderCalendar();
@@ -1538,7 +1805,7 @@
 
         // 頁面重新可見時同步
         document.addEventListener('visibilitychange', async function() {
-            if (!document.hidden) {
+            if (!document.hidden && Date.now() >= holidaySyncLockUntil && holidayBusyDates.size === 0) {
                 console.log('🔄 頁面重新可見，同步中...');
                 await loadFromCloud();
                 renderCalendar();
@@ -1548,6 +1815,7 @@
 
         // 延遲 3 秒再同步一次
         setTimeout(async function() {
+            if (Date.now() < holidaySyncLockUntil || holidayBusyDates.size > 0) return;
             console.log('🔄 延遲同步中...');
             await loadFromCloud();
             renderCalendar();
