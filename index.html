@@ -767,6 +767,9 @@
     let viewMode = 'guest';
     let holidaySyncLockUntil = 0;
     const holidayBusyDates = new Set();
+    // date -> { value: true/false, expiresAt }
+    // 本機剛切換休假後，雲端尚未更新完成前，以本機狀態為準，避免畫面反覆跳動
+    const pendingHolidayStates = new Map();
 
     const STORAGE_KEY = 'grace_booking_data';
     const HOLIDAY_KEY = 'grace_holiday_data';
@@ -899,6 +902,28 @@
                 console.log('📭 試算表中沒有資料');
             }
             
+            // 套用剛剛本機切換、但雲端可能尚未完成的休假狀態。
+            // 如果雲端已經跟本機一致，就解除保護；否則在期限內維持本機畫面。
+            const nowPending = Date.now();
+            pendingHolidayStates.forEach((pending, pendingDate) => {
+                const cloudValue = !!holidays[pendingDate];
+
+                if (cloudValue === pending.value) {
+                    pendingHolidayStates.delete(pendingDate);
+                    return;
+                }
+
+                if (nowPending < pending.expiresAt) {
+                    if (pending.value) {
+                        holidays[pendingDate] = true;
+                    } else {
+                        delete holidays[pendingDate];
+                    }
+                } else {
+                    pendingHolidayStates.delete(pendingDate);
+                }
+            });
+
             // 儲存到本地
             localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
             localStorage.setItem(HOLIDAY_KEY, JSON.stringify(holidays));
@@ -1159,22 +1184,26 @@
     }
 
     // ============================================================
-    // 雙擊切換休假
+    // 日期選取 + 休假雙擊
+    // 電腦：使用原生 dblclick
+    // 手機：使用 pointerup 自行判斷雙點
     // ============================================================
-    let lastTapTime = 0;
-    let lastTapDate = '';
+    let lastTouchTapTime = 0;
+    let lastTouchTapDate = '';
 
-    function handleDayTap(el) {
+    function getDateInfoFromCell(el) {
         const y = parseInt(el.dataset.year);
         const m = parseInt(el.dataset.month);
         const d = parseInt(el.dataset.day);
         const dateObj = new Date(y, m, d);
-        const dateStr = toDateStr(dateObj);
-        const now = Date.now();
+        return {
+            dateObj,
+            dateStr: toDateStr(dateObj)
+        };
+    }
 
-        // 單擊只更新選取狀態，不重畫整個月曆。
-        // 以前第一次點擊就 renderCalendar()，會把被點的 DOM 換掉，
-        // 導致第二下點擊抓不到同一個日期，所以雙擊看起來完全沒反應。
+    function selectDayCell(el) {
+        const { dateObj } = getDateInfoFromCell(el);
         selectedDate = dateObj;
 
         document.querySelectorAll('.day-cell.selected').forEach(cell => {
@@ -1182,55 +1211,79 @@
         });
         el.classList.add('selected');
         renderDailyList();
+    }
 
-        // 休假截圖模式不允許修改休假
+    function handleDesktopDoubleClick(el, e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (viewMode !== 'owner') return;
+
+        const { dateObj, dateStr } = getDateInfoFromCell(el);
+        if (holidayBusyDates.has(dateStr)) return;
+
+        selectedDate = dateObj;
+        toggleHolidayByDoubleClick(dateObj);
+    }
+
+    function handleTouchPointerUp(el, e) {
+        // 滑鼠交給原生 dblclick；這裡只處理手機/觸控筆
+        if (!e || (e.pointerType !== 'touch' && e.pointerType !== 'pen')) return;
+
+        const { dateObj, dateStr } = getDateInfoFromCell(el);
+        const now = Date.now();
+
+        selectDayCell(el);
+
         if (viewMode !== 'owner') {
-            lastTapTime = 0;
-            lastTapDate = '';
+            lastTouchTapTime = 0;
+            lastTouchTapDate = '';
             return;
         }
 
-        // 同一天正在同步時直接忽略後續連點
         if (holidayBusyDates.has(dateStr)) {
-            lastTapTime = 0;
-            lastTapDate = '';
+            lastTouchTapTime = 0;
+            lastTouchTapDate = '';
             return;
         }
 
-        // 500ms 內同日期第二下視為雙擊，手機/觸控也比較容易成功
         const isDoubleTap =
-            lastTapDate === dateStr &&
-            lastTapTime > 0 &&
-            (now - lastTapTime) <= 500;
+            lastTouchTapDate === dateStr &&
+            lastTouchTapTime > 0 &&
+            (now - lastTouchTapTime) <= 520;
 
         if (isDoubleTap) {
-            // 立刻清空，避免第三、第四下再次觸發
-            lastTapTime = 0;
-            lastTapDate = '';
+            lastTouchTapTime = 0;
+            lastTouchTapDate = '';
+            selectedDate = dateObj;
             toggleHolidayByDoubleClick(dateObj);
             return;
         }
 
-        lastTapTime = now;
-        lastTapDate = dateStr;
+        lastTouchTapTime = now;
+        lastTouchTapDate = dateStr;
 
-        // 超過雙擊時間後自動清掉第一下
         setTimeout(function() {
-            if (lastTapDate === dateStr && Date.now() - lastTapTime >= 500) {
-                lastTapTime = 0;
-                lastTapDate = '';
+            if (
+                lastTouchTapDate === dateStr &&
+                Date.now() - lastTouchTapTime >= 520
+            ) {
+                lastTouchTapTime = 0;
+                lastTouchTapDate = '';
             }
-        }, 550);
+        }, 560);
     }
 
     async function toggleHolidayByDoubleClick(dateObj) {
-        const dateStr = formatDateLocal(dateObj);
+        const dateStr = toDateStr(dateObj);
 
-        // 同一天正在處理時，後續狂點全部忽略，避免休→未休→休
+        // 一次切換處理中時，不接受同一天再次切換
         if (holidayBusyDates.has(dateStr)) return;
 
         const dayBookings = bookings[dateStr] || [];
         const currentlyHoliday = !!holidays[dateStr];
+        const nextHoliday = !currentlyHoliday;
 
         if (!currentlyHoliday && dayBookings.length > 0) {
             alert('此日期已有預約，請先刪除當日預約後再設定休假');
@@ -1239,24 +1292,31 @@
 
         holidayBusyDates.add(dateStr);
 
-        // 鎖住雲端同步較久，避免舊資料蓋回剛剛的操作
-        holidaySyncLockUntil = Date.now() + 4500;
+        // 先把本機結果鎖住 10 秒。
+        // Apps Script/試算表如果慢一點，背景同步抓到舊值也不能把畫面改回去。
+        pendingHolidayStates.set(dateStr, {
+            value: nextHoliday,
+            expiresAt: Date.now() + 10000
+        });
 
-        // 先立即更新畫面，只更新一次
-        if (currentlyHoliday) {
-            delete holidays[dateStr];
-        } else {
+        // 立即更新一次畫面
+        if (nextHoliday) {
             holidays[dateStr] = true;
+        } else {
+            delete holidays[dateStr];
         }
         saveHolidays();
         renderCalendar();
         renderDailyList();
 
         try {
-            await saveHolidayToCloud(dateStr, !currentlyHoliday);
+            await saveHolidayToCloud(dateStr, nextHoliday);
         } catch (error) {
             console.error('休假同步失敗：', error);
-            // 寫入失敗才還原
+
+            pendingHolidayStates.delete(dateStr);
+
+            // 真正傳送失敗才還原
             if (currentlyHoliday) {
                 holidays[dateStr] = true;
             } else {
@@ -1267,11 +1327,10 @@
             renderDailyList();
             alert('休假同步失敗，請稍後再試');
         } finally {
-            // 不立刻重新抓雲端，避免 Apps Script 尚未更新完成造成畫面反跳。
-            // 3 秒內同一天的點擊都忽略；下一輪正常自動同步再確認。
+            // 防止狂點造成第二次切換；不需要鎖太久
             setTimeout(function() {
                 holidayBusyDates.delete(dateStr);
-            }, 2500);
+            }, 1200);
         }
     }
 
@@ -1340,11 +1399,25 @@
 
         grid.innerHTML = html;
         grid.querySelectorAll('.day-cell:not(.empty)').forEach(el => {
-            el.onclick = function(e) {
+            // 單擊：只選日期
+            el.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                handleDayTap(this);
-            };
+
+                // 觸控裝置已在 pointerup 處理選取，避免同一次手勢重複執行
+                if (e.detail === 0) return;
+                selectDayCell(this);
+            });
+
+            // 電腦滑鼠：使用瀏覽器原生雙擊事件，最穩定
+            el.addEventListener('dblclick', function(e) {
+                handleDesktopDoubleClick(this, e);
+            });
+
+            // 手機/平板：自行偵測雙點
+            el.addEventListener('pointerup', function(e) {
+                handleTouchPointerUp(this, e);
+            });
         });
     }
 
