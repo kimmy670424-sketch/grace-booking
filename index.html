@@ -1172,27 +1172,55 @@
         const dateStr = toDateStr(dateObj);
         const now = Date.now();
 
-        // 單擊立刻選日期，不再等待 400ms
+        // 單擊只更新選取狀態，不重畫整個月曆。
+        // 以前第一次點擊就 renderCalendar()，會把被點的 DOM 換掉，
+        // 導致第二下點擊抓不到同一個日期，所以雙擊看起來完全沒反應。
         selectedDate = dateObj;
-        renderCalendar();
+
+        document.querySelectorAll('.day-cell.selected').forEach(cell => {
+            cell.classList.remove('selected');
+        });
+        el.classList.add('selected');
         renderDailyList();
 
-        // 客人版永遠不能切換休假
+        // 休假截圖模式不允許修改休假
         if (viewMode !== 'owner') {
-            lastTapTime = now;
-            lastTapDate = dateStr;
+            lastTapTime = 0;
+            lastTapDate = '';
             return;
         }
 
-        const isDoubleTap = lastTapDate === dateStr && (now - lastTapTime) > 0 && (now - lastTapTime) < 360;
-        lastTapTime = now;
-        lastTapDate = dateStr;
+        // 同一天正在同步時直接忽略後續連點
+        if (holidayBusyDates.has(dateStr)) {
+            lastTapTime = 0;
+            lastTapDate = '';
+            return;
+        }
+
+        // 500ms 內同日期第二下視為雙擊，手機/觸控也比較容易成功
+        const isDoubleTap =
+            lastTapDate === dateStr &&
+            lastTapTime > 0 &&
+            (now - lastTapTime) <= 500;
 
         if (isDoubleTap) {
+            // 立刻清空，避免第三、第四下再次觸發
             lastTapTime = 0;
             lastTapDate = '';
             toggleHolidayByDoubleClick(dateObj);
+            return;
         }
+
+        lastTapTime = now;
+        lastTapDate = dateStr;
+
+        // 超過雙擊時間後自動清掉第一下
+        setTimeout(function() {
+            if (lastTapDate === dateStr && Date.now() - lastTapTime >= 500) {
+                lastTapTime = 0;
+                lastTapDate = '';
+            }
+        }, 550);
     }
 
     async function toggleHolidayByDoubleClick(dateObj) {
@@ -1212,7 +1240,7 @@
         holidayBusyDates.add(dateStr);
 
         // 鎖住雲端同步較久，避免舊資料蓋回剛剛的操作
-        holidaySyncLockUntil = Date.now() + 5000;
+        holidaySyncLockUntil = Date.now() + 4500;
 
         // 先立即更新畫面，只更新一次
         if (currentlyHoliday) {
@@ -1243,7 +1271,7 @@
             // 3 秒內同一天的點擊都忽略；下一輪正常自動同步再確認。
             setTimeout(function() {
                 holidayBusyDates.delete(dateStr);
-            }, 3000);
+            }, 2500);
         }
     }
 
