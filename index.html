@@ -687,10 +687,9 @@
         </div>
     </div>
     <div class="view-switch" id="viewSwitch">
-        <button id="guestViewBtn" class="active">🌿 客人版｜只看休假</button>
-        <button id="ownerViewBtn">🔐 店家版｜休假＋預約</button>
-        <button id="screenshotModeBtn">📷 客人截圖</button>
-        <div class="mode-note" id="modeNote">客人版不顯示任何預約姓名、時間或服務</div>
+        <button id="guestViewBtn" class="active">🌿 休假</button>
+        <button id="ownerViewBtn">📋 預約</button>
+        <div class="mode-note" id="modeNote">休假模式只顯示休假日期</div>
     </div>
     <button class="fab" id="showFormBtn">＋</button>
     <div class="calendar">
@@ -709,8 +708,6 @@
         <button class="sync-btn" id="syncBtn">🔄 手動同步</button>
     </div>
 </div>
-
-<button class="exit-screenshot-btn" id="exitScreenshotBtn">✕ 離開截圖模式</button>
 
 <div class="picker-overlay" id="pickerOverlay">
     <div class="picker-modal">
@@ -770,7 +767,7 @@
     let holidaySyncLockUntil = 0;
     const holidayBusyDates = new Set();
 
-    // 店家模式密碼：請自行改成只有你知道的 4~8 位數
+    // 預約模式密碼：請自行改成只有你知道的 4~8 位數
     const OWNER_PIN = '8888';
 
     const STORAGE_KEY = 'grace_booking_data';
@@ -1075,7 +1072,7 @@
         if (note) {
             note.textContent = viewMode === 'owner'
                 ? '店家版：可看全部預約，雙擊日期可設定／取消休假'
-                : '客人版不顯示任何預約姓名、時間或服務';
+                : '休假模式只顯示休假日期';
         }
 
         renderCalendar();
@@ -1083,13 +1080,6 @@
     }
 
     function enterOwnerMode() {
-        if (viewMode === 'owner') return;
-        const pin = prompt('請輸入店家模式密碼');
-        if (pin === null) return;
-        if (pin !== OWNER_PIN) {
-            alert('密碼錯誤');
-            return;
-        }
         sessionStorage.setItem('grace_owner_mode', '1');
         setViewMode('owner');
     }
@@ -1199,7 +1189,7 @@
         renderCalendar();
         renderDailyList();
 
-        // 客人版永遠不能切換休假
+        // 休假模式永遠不能切換休假
         if (viewMode !== 'owner') {
             lastTapTime = now;
             lastTapDate = dateStr;
@@ -1362,7 +1352,7 @@
                 container.innerHTML = `<div class="holiday-only-state">🛑 <strong>這天休假</strong><br>請避開此日期安排預約</div>`;
             } else {
                 countEl.textContent = '營業日';
-                container.innerHTML = `<div class="holiday-only-state">🌿 此日目前沒有標示休假<br><span style="font-size:0.82rem;color:#aa9a8c;">客人版不顯示任何預約資料</span></div>`;
+                container.innerHTML = `<div class="holiday-only-state">🌿 此日目前沒有標示休假<br><span style="font-size:0.82rem;color:#aa9a8c;">休假模式不顯示任何預約資料</span></div>`;
             }
             return;
         }
@@ -1674,50 +1664,8 @@
     // 初始化
     // ============================================================
 
-    // ============================================================
-    // 📷 客人截圖模式
-    // ============================================================
-    let modeBeforeScreenshot = 'guest';
-
-    function enterScreenshotMode() {
-        modeBeforeScreenshot = viewMode;
-
-        // 截圖一律用客人視圖渲染，確保完全不顯示預約內容
-        viewMode = 'guest';
-        document.body.classList.remove('owner-mode');
-        document.body.classList.add('guest-mode');
-        document.body.classList.add('screenshot-mode');
-
-        renderCalendar();
-        renderDailyList();
-
-        // 回到頁面頂端，方便直接截完整月曆
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function exitScreenshotMode() {
-        document.body.classList.remove('screenshot-mode');
-
-        // 回復進入截圖前的模式
-        viewMode = modeBeforeScreenshot === 'owner' ? 'owner' : 'guest';
-        document.body.classList.toggle('owner-mode', viewMode === 'owner');
-        document.body.classList.toggle('guest-mode', viewMode === 'guest');
-
-        const guestBtn = document.getElementById('guestViewBtn');
-        const ownerBtn = document.getElementById('ownerViewBtn');
-        if (guestBtn) guestBtn.classList.toggle('active', viewMode === 'guest');
-        if (ownerBtn) ownerBtn.classList.toggle('active', viewMode === 'owner');
-
-        renderCalendar();
-        renderDailyList();
-    }
-
     document.addEventListener('DOMContentLoaded', async function() {
 
-        const screenshotModeBtn = document.getElementById('screenshotModeBtn');
-        const exitScreenshotBtn = document.getElementById('exitScreenshotBtn');
-        if (screenshotModeBtn) screenshotModeBtn.addEventListener('click', enterScreenshotMode);
-        if (exitScreenshotBtn) exitScreenshotBtn.addEventListener('click', exitScreenshotMode);
 
 
         console.log('🚀 恩典髮屋預約系統啟動中...');
@@ -1787,7 +1735,7 @@
 
         document.getElementById('syncBtn').addEventListener('click', forceSync);
 
-        // 預設客人版；同一個分頁已登入店家則保留店家模式
+        // 預設休假模式；同一個分頁已登入店家則保留預約模式
         setViewMode(sessionStorage.getItem('grace_owner_mode') === '1' ? 'owner' : 'guest');
 
         // 渲染月曆
